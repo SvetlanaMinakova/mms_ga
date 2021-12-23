@@ -98,6 +98,9 @@ class MMSgaParallelMultiPipeline:
 
     def init_with_random_population(self):
         """ Generate random population"""
+        # init-start timer
+        init_start_time = time.time()
+
         # generate chromosomes
         self.population = []
         for i in range(0, self.population_start_size):
@@ -105,11 +108,15 @@ class MMSgaParallelMultiPipeline:
             self.population.append(random_chromosome)
 
         # annotate chromosomes with fitness: buffer sizes and time loss
-        self.annotate_chromosomes_with_fitness_parr()
+        self.annotate_chromosomes_with_fitness_parr(print_batches=True)
         # sort population by buffers size (descending)
         self.population = sorted(self.population, key=lambda x: x.buf_size, reverse=False)
         # update pareto-front
         self.update_pareto_front()
+
+        # init-end timer
+        init_end_time = time.time()
+        print("init time:", time_elapsed_str(init_start_time, init_end_time))
 
     def generate_random_chromosome(self):
         random_chromosome = MMSChromosome(self.layers_num)
@@ -139,6 +146,9 @@ class MMSgaParallelMultiPipeline:
         best_buf_size = cur_buf_size
         no_improvement_epochs = 0
 
+        # ga-start timer
+        ga_start_time = time.time()
+
         # ... and 2. there is something to select, and 3. done epochs < max_epochs,
         while chromosomes_to_select > 0 and cur_epoch < self.epochs:
             # epoch-start timer
@@ -165,13 +175,12 @@ class MMSgaParallelMultiPipeline:
 
             # epoch-end timer
             epoch_end_time = time.time()
-            hours, rem = divmod(epoch_end_time - epoch_start_time, 3600)
-            minutes, seconds = divmod(rem, 60)
 
             if self.verbose:
                 print("EPOCH: ", cur_epoch, "epoch best memory: ", cur_buf_size, "GA best memory: ", best_buf_size)
                 print("population size", len(self.population))
-                print("epoch time: {:0>2}:{:0>2}:{:05.2f}".format(int(hours), int(minutes), seconds))
+                print("epoch time:", time_elapsed_str(epoch_start_time, epoch_end_time),
+                      "; GA time:", time_elapsed_str(ga_start_time, epoch_end_time))
 
             if improved:
                 no_improvement_epochs = 0
@@ -253,7 +262,7 @@ class MMSgaParallelMultiPipeline:
     Evaluation of chromosome in terms of fitness function (time loss and buffers size)
     """
 
-    def annotate_chromosomes_with_fitness_parr(self):
+    def annotate_chromosomes_with_fitness_parr(self, print_batches=False):
         """ Parallel evaluation: self.parr_threads (specified as GA input) are used to perform evaluation"""
         # split chromosomes in batches
         batch_size = self.parr_threads
@@ -263,7 +272,7 @@ class MMSgaParallelMultiPipeline:
         # chromosomes are processed in parallel batches
         batches = self.generate_chromosomes_batches(chromosomes_num, batches_num, batch_size)
 
-        if self.verbose:
+        if print_batches:
             print("eval ", chromosomes_num, "chromosomes in", len(batches), "parallel batches",
                   len(batches[0]), "chromosomes each (",
                   len(batches[-1]), " chromosomes in the last batch)")
@@ -445,3 +454,15 @@ def get_phases_per_layer_per_partition_per_dnn(partitions_per_dnn: [],
         phases_per_layer_per_partition_per_dnn.append(ph_per_dnn)
 
     return phases_per_layer_per_partition_per_dnn
+
+
+def time_elapsed(start_time, end_time):
+    hours, rem = divmod(end_time - start_time, 3600)
+    minutes, seconds = divmod(rem, 60)
+    return hours, minutes, seconds
+
+
+def time_elapsed_str(start_time, end_time):
+    hours, minutes, seconds = time_elapsed(start_time, end_time)
+    time_str = "{:0>2}:{:0>2}:{:05.2f}".format(int(hours), int(minutes), seconds)
+    return time_str
