@@ -293,11 +293,15 @@ class MMSgaParallelMultiPipeline:
                 chromosome_id += 1
 
     def compute_batch_fitness(self, chromosomes_batch):
-
         # create parallel threads pool
         pool = Pool(processes=len(chromosomes_batch))
         # map the eval function to the batches (eval chromosomes per-batch in parallel)
         batch_fitness = pool.map(self.compute_fitness, chromosomes_batch)
+        # close pool
+        pool.close()
+        # wait for threads pool to finish
+        pool.join()
+
         return batch_fitness
 
     def generate_chromosomes_batches(self, chromosomes_num, batches_num, batch_size):
