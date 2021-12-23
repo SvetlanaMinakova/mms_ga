@@ -75,6 +75,9 @@ def run_ga_parallel_multi(json_dnn_paths,
     from converters.json_converters.json_to_dnn import parse_json_dnn
     from converters.json_converters.json_mms_ga_conf_parser import parse_mms_ga_conf
     from converters.json_converters.json_mapping_parser import parse_mapping
+    from converters.json_converters.mms_chromosomes_to_json import mms_chromosomes_to_json
+    from dnn_partitioning.after_mapping.partition_dnn_with_mapping import partition_dnn_with_mapping
+    from models.dnn_model.transformation.external_ios_processor import external_ios_to_data_layers
     import traceback
     from util import print_to_stderr
     from low_memory.mms.ga_based.multi_thread.MMSgaParallelMultiPipeline import MMSgaParallelMultiPipeline
@@ -95,29 +98,44 @@ def run_ga_parallel_multi(json_dnn_paths,
             else:
                 mapping = parse_mapping(json_mapping_path)
                 dnn_mappings.append(mapping)
-                print("mapping parsed: ", mapping)
-
-        # partition dnns according to the parsed mappings
-        stage = "DNNs partitioning"
-        dnn_partitions = []
+                # print("mapping parsed: ", mapping)
 
         stage = "GA config parsing"
         conf = parse_mms_ga_conf(json_ga_conf_path)
         # print(conf)
 
-        """
+        # partition dnns according to the parsed mappings
+        stage = "DNNs partitioning"
+        partitions_per_dnn = []
+        for dnn_id in range(len(dnns)):
+            dnn = dnns[dnn_id]
+            mapping = dnn_mappings[dnn_id]
+            if mapping is None:
+                # no pipeline mapping
+                dnn_partitions = [dnn]
+            else:
+                dnn_partitions, inter_dnn_connections = partition_dnn_with_mapping(dnn, mapping)
+            partitions_per_dnn.append(dnn_partitions)
+
+        stage = "Representing external dnn data sources/consumers as (data) layers"
+        # represent all external I/Os as explicit (data) layers: important for building
+        # of inter-dnn buffers and external-source -> dnn buffers
+        for partitions in partitions_per_dnn:
+            for partition in partitions:
+                external_ios_to_data_layers(partition)
+
         stage = "GA setup"
-        ga = MMSgaParallel(dnn,
-                           conf["epochs"],
-                           conf["population_start_size"],
-                           conf["selection_percent"],
-                           conf["mutation_probability"],
-                           conf["mutation_percent"],
-                           conf["max_no_improvement_epochs"],
-                           conf["dp_by_parts_init_probability"],
-                           conf["data_token_size"],
-                           parr_threads,
-                           conf["verbose"])
+        ga = MMSgaParallelMultiPipeline(partitions_per_dnn,
+                                        conf["epochs"],
+                                        conf["population_start_size"],
+                                        conf["selection_percent"],
+                                        conf["mutation_probability"],
+                                        conf["mutation_percent"],
+                                        conf["max_no_improvement_epochs"],
+                                        conf["dp_by_parts_init_probability"],
+                                        conf["data_token_size"],
+                                        parr_threads,
+                                        conf["verbose"])
 
         stage = "GA initialization with first population"
         ga.init_with_random_population()
@@ -131,19 +149,13 @@ def run_ga_parallel_multi(json_dnn_paths,
         # best (in terms of buffers sizes) chromosome
         best_chromosome = pareto_front[0]
         print(best_chromosome.dp_by_parts)
-        """
+
+        stage = "Output JSON file generation"
+        mms_chromosomes_to_json(pareto_front, output_file_path)
 
     except Exception:
         print_to_stderr("Exception at stage '" + stage + "'")
         print(traceback.format_exc())
-
-
-def partition_dnn():
-    # task graph
-    task_graph = dnn_to_task_graph(cnn2)
-
-    # partitioning
-    partitions, connections = partition_dnn_with_task_graph_and_mapping(cnn2, task_graph, handcrafted_mapping)
 
 
 def run_test():
@@ -170,7 +182,7 @@ def run_test_multi():
     from util import get_project_root
     project_root_path = str(get_project_root())
     dnn1_path = project_root_path + "/data/json_dnn/CNN1.json"
-    dnn2_path = project_root_path + "/data/json_dnn/CNN1.json"
+    dnn2_path = project_root_path + "/data/json_dnn/CNN2.json"
     dnn_paths = [dnn1_path, dnn2_path]
 
     dnn1_mapping_path = None

@@ -1,7 +1,35 @@
 from models.app_model.DNNBasedAppModel import InterDNNConnection
 from models.dnn_model.dnn import DNN
 from models.TaskGraph import TaskGraph, task_name_to_layer_ids
+from converters.dnn_to_task_graph import dnn_to_task_graph
 import copy
+
+
+def partition_dnn_with_mapping(dnn, mapping):
+    """
+    Partition dnn with mapping. The DNN will be represented as a set of
+        partitions (subnetworks) + a set of external connections.
+        Each partition (sub-network) contains dnn layers and connections mapped on a specific processor.
+        Each external connection specifies connections between two layers mapped on different processors (i.e.,
+        belonging to two different partitions)
+    :param dnn: dnn to partition
+    :param mapping: mapping = [proc_tasks_1, proc_tasks_2, ..., proc_tasks_M]
+        where M is number of processors in the target platform,
+        proc_tasks_j = [task_j1, task_j2, ...], j in [1, M] is a set of tasks
+        where task_ji is an integer number, representing layer (task) id in the DNN
+
+    :return: tuple: partitions, connections where:
+        partitions is a  list of dnn partitions, where every partition is a DNN, that is
+        a sub-graph of the original dnn, and all partitions together represent
+        functionality of the original DNN
+        connections: connections between the DNN partitions
+    """
+
+    # task graph
+    task_graph = dnn_to_task_graph(dnn)
+    # partitioning
+    partitions, connections = partition_dnn_with_task_graph_and_mapping(dnn, task_graph, mapping)
+    return partitions, connections
 
 
 def partition_dnn_with_task_graph_and_mapping(dnn: DNN, task_graph: TaskGraph, mapping: []):

@@ -1,29 +1,3 @@
-from high_throughput.scheduling.dnn_scheduling import DNNScheduling
-"""
-DNN-based application model
-"""
-
-
-class SingleDNNAppModel:
-    def __init__(self, name, dnn, partitioning, mapping, scheduling: DNNScheduling, buffers):
-        self.name = name
-        self.dnn = dnn
-        self.partitioning = partitioning
-        self.mapping = mapping
-        self.scheduling = scheduling
-        self.buffers = buffers
-
-
-class MultiDNNAppModel:
-    def __init__(self, name, dnns, partitioning, mapping, scheduling: DNNScheduling, buffers):
-        self.name = name
-        self.dnns = dnns
-        self.partitioning = partitioning
-        self.mapping = mapping
-        self.scheduling = scheduling
-        self.buffers = buffers
-
-
 class InterDNNConnection:
     """
         Connection between two DNNs/ DNN partitions
