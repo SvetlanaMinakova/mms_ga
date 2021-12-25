@@ -11,7 +11,7 @@ def parse_app_conf(path):
         else:
             conf_as_dict = {}
             conf = json.load(file)
-            required_fields = ["json_dnn_paths", "json_ga_conf_path"]
+            required_fields = ["json_dnn_paths", "json_ga_conf_paths"]
             optional_fields = ["app_name", "json_mapping_paths", "output_file_path"]
 
             for required_field in required_fields:
