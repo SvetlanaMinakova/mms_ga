@@ -11,7 +11,7 @@ def parse_app_conf(path):
         else:
             conf_as_dict = {}
             conf = json.load(file)
-            required_fields = ["json_dnn_paths", "json_ga_conf_paths"]
+            required_fields = ["json_dnn_paths", "json_ga_conf_path"]
             optional_fields = ["app_name", "json_mapping_paths", "output_file_path"]
 
             for required_field in required_fields:
@@ -26,6 +26,8 @@ def parse_app_conf(path):
 
             if "json_mapping_paths" not in conf:
                 conf_as_dict["json_mapping_paths"] = [None for _ in range(len(conf["json_dnn_paths"]))]
+	    else:
+		conf_as_dict["json_mapping_paths"] = conf["json_mapping_paths"]
 
             if "output_file_path" not in conf:
                 project_root_path = str(get_project_root())
