@@ -1,0 +1,7 @@
+{
+  "app_name": "app2",
+  "json_dnn_paths": ["./data/json_dnn/efficientnetb0.json"],
+  "json_ga_conf_path" : "./data/mms_ga_configs/app2_ga_conf_02.json"
+}
+            
+           
