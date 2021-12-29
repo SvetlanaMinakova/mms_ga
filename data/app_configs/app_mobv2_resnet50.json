@@ -4,7 +4,7 @@
       "./data/json_dnn/mobilenetv2.json",
       "./data/json_dnn/resnet50.json"
   ],
-  "json_ga_conf_path" : "./data/mms_ga_configs/app5_ga_conf.json"
+  "json_ga_conf_path" : "./data/mms_ga_configs/app_mobv2_resnet50_ga_conf.json"
 }
             
            
