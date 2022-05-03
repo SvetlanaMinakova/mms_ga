@@ -1,6 +1,5 @@
 import argparse
-from os.path import dirname, join
-import os
+from os.path import dirname
 import sys
 
 """
@@ -27,7 +26,7 @@ def main():
     sys.path.append(this_dir)
 
     # import sub-modules
-    from mms_ga import run_ga_parallel_multi
+    from DSE.low_memory.mms.ga_based.multi_thread.mms_ga import run_ga_parallel_multi
     from converters.json_converters.json_app_config_parser import parse_app_conf
 
     # parse config
