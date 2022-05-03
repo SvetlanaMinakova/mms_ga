@@ -1,28 +1,28 @@
-from DSE.low_memory.mms.ga_based.multi_thread.mms_ga import run_ga, run_ga_parallel_multi
+import os.path
 
 
-def run_test_single_dnn():
-    from util import get_project_root
-    project_root_path = str(get_project_root())
-    test_json_dnn_path = project_root_path + "/data/json_dnn/CNN1.json"
-    test_ga_conf_path = project_root_path + "/data/mms_ga_configs/testDNN_ga_conf.json"
-    test_ga_output_path = project_root_path + "/output/testDNN_pareto.json"
-    parr_threads = 6
+def run_test_ga():
+    pass
+
+
+def run_test_ga_single_dnn():
+    # import project modules
+    from DSE.low_memory.mms.ga_based.multi_thread.mms_ga import run_ga
+    from tests.test_config import get_test_config
+
+    test_config = get_test_config()
+
+    test_json_dnn_path = str(os.path.join(test_config["cnns_dir"], "CNN1.json"))
+    test_ga_conf_path = str(os.path.join(test_config["ga_configs_dir"], "testDNN_ga_conf.json"))
+    test_ga_output_path = str(os.path.join(test_config["intermediate_files_folder_abs"], "testDNN_pareto.json"))
+    parr_threads = test_config["cpu_threads"]
+
     run_ga(test_json_dnn_path, test_ga_conf_path, parr_threads, test_ga_output_path)
 
 
-def run_mobilenet_v2():
+def run_test_ga_multi_dnn():
     from util import get_project_root
-    project_root_path = str(get_project_root())
-    test_json_dnn_path = project_root_path + "/data/json_dnn/mobilenetv2.json"
-    test_ga_conf_path = project_root_path + "/data/mms_ga_configs/app1_ga_conf.json"
-    test_ga_output_path = project_root_path + "/output/app1_pareto.json"
-    parr_threads = 6
-    run_ga(test_json_dnn_path, test_ga_conf_path, parr_threads, test_ga_output_path)
-
-
-def run_test_multi():
-    from util import get_project_root
+    from DSE.low_memory.mms.ga_based.multi_thread.mms_ga import run_ga_parallel_multi
 
     project_root_path = str(get_project_root())
 

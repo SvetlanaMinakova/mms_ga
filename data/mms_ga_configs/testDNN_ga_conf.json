@@ -1,5 +1,5 @@
 {
-  "epochs": 100,
+  "epochs": 10,
   "population_start_size": 50,
   "selection_percent": 66,
   "mutation_probability": 0.05,
