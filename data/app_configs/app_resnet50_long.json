@@ -1,0 +1,7 @@
+{
+  "app_name": "app_resnet50_long",
+  "json_dnn_paths": ["./data/json_dnn/resnet50.json"],
+  "json_ga_conf_path" : "./data/mms_ga_configs/resnet50_long_ga_conf.json"
+}
+            
+           

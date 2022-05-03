@@ -1,0 +1,11 @@
+{
+  "epochs": 300,
+  "population_start_size": 5000,
+  "selection_percent": 66,
+  "mutation_probability": 0.05,
+  "mutation_percent":5,
+  "max_no_improvement_epochs":50,
+  "dp_by_parts_init_probability":0.2,
+  "data_token_size": 4,
+  "verbose": true
+}

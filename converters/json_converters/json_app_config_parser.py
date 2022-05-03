@@ -26,6 +26,8 @@ def parse_app_conf(path):
 
             if "json_mapping_paths" not in conf:
                 conf_as_dict["json_mapping_paths"] = [None for _ in range(len(conf["json_dnn_paths"]))]
+            else:
+                conf_as_dict["json_mapping_paths"] = conf["json_mapping_paths"]
 
             if "output_file_path" not in conf:
                 project_root_path = str(get_project_root())
