@@ -426,6 +426,21 @@ def annotate_chromosome_with_fitness(chromosome, buf_size_mb, time_loss_ms):
     print("chromosome buf size:", buf_size_mb, ", time loss: ", time_loss_ms)
 
 
+def get_max_phases_per_layer_per_partition_per_dnn(partitions_per_dnn: []):
+    """
+    Determine maximum number of phases performed by every DNN layer
+    :param partitions_per_dnn: list of pipelined partitions per dnn
+    """
+    max_phases_per_layer_per_partition_per_dnn = []
+    for dnn_id in range(len(partitions_per_dnn)):
+        max_ph_per_dnn = {}
+        partitions = partitions_per_dnn[dnn_id]
+        for partition in partitions:
+            max_ph_per_dnn[partition.name] = get_max_phases_per_layer(partition)
+            max_phases_per_layer_per_partition_per_dnn.append(max_ph_per_dnn)
+    return max_phases_per_layer_per_partition_per_dnn
+
+
 def get_phases_per_layer_per_partition_per_dnn(partitions_per_dnn: [],
                                                chromosome: MMSChromosome,
                                                max_phases_per_layer_per_partition_per_dnn):

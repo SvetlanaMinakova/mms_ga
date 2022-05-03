@@ -1,7 +1,6 @@
 from models.dnn_model.dnn import DNN, Layer
 import json
 from converters.json_converters.json_util import extract_or_default
-from types import SimpleNamespace
 
 
 def parse_json_dnn(path):
