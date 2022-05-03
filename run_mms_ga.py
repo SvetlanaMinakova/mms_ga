@@ -27,7 +27,7 @@ def main():
     sys.path.append(this_dir)
 
     # import sub-modules
-    from run_ga import run_ga_parallel_multi
+    from mms_ga import run_ga_parallel_multi
     from converters.json_converters.json_app_config_parser import parse_app_conf
 
     # parse config

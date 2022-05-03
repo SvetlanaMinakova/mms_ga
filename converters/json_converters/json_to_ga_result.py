@@ -1,5 +1,5 @@
-from low_memory.mms.ga_based.MMSChromosome import MMSChromosome
-from converters.json_converters.json_util import extract_or_default, parse_list
+from DSE.low_memory.mms.ga_based.MMSChromosome import MMSChromosome
+from converters.json_converters.json_util import parse_list
 
 
 def parse_json_ga_result(path):

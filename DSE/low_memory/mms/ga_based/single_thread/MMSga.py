@@ -1,12 +1,11 @@
-from low_memory.mms.ga_based.MMSChromosome import MMSChromosome
+from DSE.low_memory.mms.ga_based.MMSChromosome import MMSChromosome
 from models.dnn_model.dnn import DNN
-from low_memory.dp_by_parts import get_max_phases_per_layer # , eval_thr_loss, reset_phases
-from low_memory.mms.ga_based.MMS_ga_eval import eval_chromosome_time_loss_ms_multi_pipeline,\
-    eval_dnn_buffers_size_multi_pipelined_mb
+from DSE.low_memory.dp_by_parts import get_max_phases_per_layer # , eval_thr_loss, reset_phases
+from DSE.low_memory.mms.ga_based.MMS_ga_eval import eval_chromosome_time_loss_ms, eval_dnn_buffers_size_mb
 import random
 
 
-class MMSgaMulti:
+class MMSga:
     """
         Genetic algorithm, that performs search of efficient maximum-memory-save (MMS) memory reuse.
         MMS reuses memory among and within layers of a CNN, thereby reducting the CNN memory cost.
@@ -36,17 +35,12 @@ class MMSgaMulti:
     # return pareto-front where every chromosome, representing DP within the CNN
     #         is annotated with loss of throughput (caused by processing data by parts, the smaller, the better)
     #         and buffer sizes (the smaller, the better)
-    def __init__(self, partitions_per_dnn: [], epochs=10,
+    def __init__(self, dnn: DNN, epochs=10,
                  population_start_size=100, selection_percent=50, mutation_probability=0,
                  mutation_percent=10, max_no_improvement_epochs=10,
                  dp_by_parts_init_probability=0.5, data_token_size=4, verbose=True):
-        self.partitions_per_dnn = partitions_per_dnn
-
-        self.dnns_num = len(partitions_per_dnn)
-        self.layers_num = 0
-        for partitions in partitions_per_dnn:
-            for partition in partitions:
-                self.layers_num += len(partition.get_layers())
+        self.dnn = dnn
+        self.layers_num = len(self.dnn.get_layers())
 
         self.population_start_size = population_start_size
         self.epochs = epochs
@@ -59,14 +53,7 @@ class MMSgaMulti:
         self.data_token_size = data_token_size
 
         # meta-data
-        self.max_phases_per_layer_per_partition_per_dnn = []
-        for dnn_id in range(self.dnns_num):
-            max_ph_per_dnn = {}
-            partitions = partitions_per_dnn[dnn_id]
-            for partition in partitions:
-                max_ph_per_dnn[partition.name] = get_max_phases_per_layer(partition)
-            self.max_phases_per_layer_per_partition_per_dnn.append(max_ph_per_dnn)
-
+        self.max_phases_per_layer = get_max_phases_per_layer(dnn)
         self.population = []
         self.selected_offspring = []
 
@@ -217,14 +204,9 @@ class MMSgaMulti:
     def annotate_chromosome_with_fitness(self, chromosome):
         """ Annotate chromosome with fitness function: with time loss and buffers size"""
         # evaluate chromosome in terms of throughput loss and buffers size
-        phases_per_layer_per_partition_per_dnn = get_phases_per_layer_per_partition_per_dnn(self.partitions_per_dnn,
-                                                                                            chromosome,
-                                                                                            self.max_phases_per_layer_per_partition_per_dnn)
-
-        time_loss_ms = eval_chromosome_time_loss_ms_multi_pipeline(phases_per_layer_per_partition_per_dnn)
-        buf_size_mb = eval_dnn_buffers_size_multi_pipelined_mb(self.partitions_per_dnn,
-                                                               phases_per_layer_per_partition_per_dnn,
-                                                               self.data_token_size)
+        phases_per_layer = get_phases_per_layer(self.dnn, chromosome, self.max_phases_per_layer)
+        time_loss_ms = eval_chromosome_time_loss_ms(phases_per_layer)
+        buf_size_mb = eval_dnn_buffers_size_mb(self.dnn, phases_per_layer, self.data_token_size)
 
         # annotate chromosome
         chromosome.time_loss = time_loss_ms
@@ -267,36 +249,27 @@ class MMSgaMulti:
         return child_chromosome
 
 
-def get_phases_per_layer_per_partition_per_dnn(partitions_per_dnn: [],
-                                               chromosome: MMSChromosome,
-                                               max_phases_per_layer_per_partition_per_dnn):
+def get_phases_per_layer(dnn: DNN, chromosome: MMSChromosome, max_phases_per_layer):
     """
     Determine number of phases performed by every DNN layer with respective MMS chromosome
-    :param partitions_per_dnn: list of pipelined partitions per dnn
+    :param dnn: DNN
     :param chromosome: MMS chromosome
-    :param max_phases_per_layer_per_partition_per_dnn:
+    :param max_phases_per_layer: dictionary where key = name of layer within the dnn,
+    value = maximum number of phases that can be ever performed by this layer
+    :return: phases_per_layer: dictionary where key = name of layer within the dnn,
+    value =number of phases that are performed by this layer according to MMSChromosome
     """
-    phases_per_layer_per_partition_per_dnn = []
-    dnns_num = len(partitions_per_dnn)
-    layer_id_in_chromosome = 0
-    for dnn_id in range(dnns_num):
-        max_ph_per_dnn = max_phases_per_layer_per_partition_per_dnn[dnn_id]
-        ph_per_dnn = {}
-        partitions = partitions_per_dnn[dnn_id]
-        for partition in partitions:
-            max_ph_per_dnn_per_partition = max_ph_per_dnn[partition.name]
-            ph_per_dnn_per_partition = {}
-            for layer in partition.get_layers():
-                dp_by_parts_flag = chromosome.dp_by_parts[layer_id_in_chromosome]
-                # data processing by parts
-                if dp_by_parts_flag is True:
-                    ph_per_dnn_per_partition[layer.name] = max_ph_per_dnn_per_partition[layer.name]
-                else:
-                    # no data processing by parts
-                    ph_per_dnn_per_partition[layer.name] = 1
-                layer_id_in_chromosome += 1
-            ph_per_dnn[partition.name] = ph_per_dnn_per_partition
-        phases_per_layer_per_partition_per_dnn.append(ph_per_dnn)
+    layers = dnn.get_layers()
+    phases_per_layer = {}
+    for layer_id in range(chromosome.layers_num):
+        layer = layers[layer_id]
+        dp_by_parts_flag = chromosome.dp_by_parts[layer_id]
+        # data processing by parts
+        if dp_by_parts_flag is True:
+            phases_per_layer[layer.name] = max_phases_per_layer[layer.name]
+        else:
+            # no data processing by parts
+            phases_per_layer[layer.name] = 1
+    return phases_per_layer
 
-    return phases_per_layer_per_partition_per_dnn
 

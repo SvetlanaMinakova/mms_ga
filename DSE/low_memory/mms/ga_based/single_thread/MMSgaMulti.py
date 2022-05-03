@@ -1,21 +1,14 @@
-import math
-
-from low_memory.mms.ga_based.MMSChromosome import MMSChromosome
-from models.dnn_model.dnn import DNN
-from low_memory.dp_by_parts import get_max_phases_per_layer # , eval_thr_loss, reset_phases
-from low_memory.mms.ga_based.MMS_ga_eval import eval_chromosome_time_loss_ms, eval_dnn_buffers_size_mb
-from low_memory.mms.ga_based.MMSParetoSelection import select_pareto, merge_pareto_fronts
+from DSE.low_memory.mms.ga_based.MMSChromosome import MMSChromosome
+from DSE.low_memory.dp_by_parts import get_max_phases_per_layer # , eval_thr_loss, reset_phases
+from DSE.low_memory.mms.ga_based.MMS_ga_eval import eval_chromosome_time_loss_ms_multi_pipeline,\
+    eval_dnn_buffers_size_multi_pipelined_mb
 import random
-import copy
-import time
-from multiprocessing import Pool
 
 
-class MMSgaParallel:
+class MMSgaMulti:
     """
-        This version performs the heaviest part of computation, i.e., DNN buffers size evaluation, in parallel
         Genetic algorithm, that performs search of efficient maximum-memory-save (MMS) memory reuse.
-        MMS reuses memory among and within layers of a CNN, thereby reducing the CNN memory cost.
+        MMS reuses memory among and within layers of a CNN, thereby reducting the CNN memory cost.
         It employs and combines two memory reuse techniques, namely:
          1) DP (data processing by parts) where memory is reused among data parts processed by the same CNN layer.
          This memory reuse method can cause loss of throughput due to synchronization between data parts
@@ -32,25 +25,27 @@ class MMSgaParallel:
         :param eval_communication (flag): if True, communication between processors will be taken into account
         :param data_token_size: size of one data token (in Bytes)
         :param verbose: print details
-        :param return_pareto: (flag) return pareto-front of chromosomes, where every chromosome,
-            representing DP within the CNN is annotated with loss of throughput (caused by processing data
-            by parts, the smaller, the better) and buffer sizes (the smaller, the better)
-            If this flag is False, the best chromosome from the pareto front is returned
+
+        :return best found dp-by-parts list:
+            list of boolean flags of len = len(self.layers_num)
+            each i-th flag = True/False determines whether layer li of dnn
+            processes data by parts (True) or not (False)
         """
-    def __init__(self, dnn: DNN, epochs=10,
+    # TODO: implement
+    # return pareto-front where every chromosome, representing DP within the CNN
+    #         is annotated with loss of throughput (caused by processing data by parts, the smaller, the better)
+    #         and buffer sizes (the smaller, the better)
+    def __init__(self, partitions_per_dnn: [], epochs=10,
                  population_start_size=100, selection_percent=50, mutation_probability=0,
                  mutation_percent=10, max_no_improvement_epochs=10,
-                 dp_by_parts_init_probability=0.5, data_token_size=4,
-                 parr_threads=1,
-                 verbose=True,
-                 return_pareto=True):
-        self.dnn = dnn
+                 dp_by_parts_init_probability=0.5, data_token_size=4, verbose=True):
+        self.partitions_per_dnn = partitions_per_dnn
 
-        # parallel processing
-        self.parr_threads = parr_threads
-        self.dnn_copies = [copy.deepcopy(self.dnn) for thr in range(self.parr_threads)]
-
-        self.layers_num = len(self.dnn.get_layers())
+        self.dnns_num = len(partitions_per_dnn)
+        self.layers_num = 0
+        for partitions in partitions_per_dnn:
+            for partition in partitions:
+                self.layers_num += len(partition.get_layers())
 
         self.population_start_size = population_start_size
         self.epochs = epochs
@@ -63,7 +58,14 @@ class MMSgaParallel:
         self.data_token_size = data_token_size
 
         # meta-data
-        self.max_phases_per_layer = get_max_phases_per_layer(dnn)
+        self.max_phases_per_layer_per_partition_per_dnn = []
+        for dnn_id in range(self.dnns_num):
+            max_ph_per_dnn = {}
+            partitions = partitions_per_dnn[dnn_id]
+            for partition in partitions:
+                max_ph_per_dnn[partition.name] = get_max_phases_per_layer(partition)
+            self.max_phases_per_layer_per_partition_per_dnn.append(max_ph_per_dnn)
+
         self.population = []
         self.selected_offspring = []
 
@@ -75,32 +77,19 @@ class MMSgaParallel:
 
         # new
         # pareto front found across all epochs
-        self.return_pareto = return_pareto
         self.pareto_across_dse = []
 
-    """ GA initialization"""
-
     def init_with_random_population(self):
-        """ Generate random population"""
-        # generate chromosomes
         self.population = []
         for i in range(0, self.population_start_size):
             random_chromosome = self.generate_random_chromosome()
+            self.annotate_chromosome_with_fitness(random_chromosome)
             self.population.append(random_chromosome)
-
-        # annotate chromosomes with fitness: buffer sizes and time loss
-        self.annotate_chromosomes_with_fitness_parr()
-        # sort population by buffers size (descending)
-        self.population = sorted(self.population, key=lambda x: x.buf_size, reverse=False)
-        # update pareto-front
-        self.update_pareto_front()
 
     def generate_random_chromosome(self):
         random_chromosome = MMSChromosome(self.layers_num)
         random_chromosome.init_random(self.dp_by_parts_init_probability)
         return random_chromosome
-
-    """ GA execution"""
 
     def run(self):
         """ run GA"""
@@ -114,10 +103,7 @@ class MMSgaParallel:
 
         # if 1. best time for population improves for >= no_improvement_epochs ...
         cur = self.population[0]
-        cur.dnn = self.dnn
-        # chromosome is already annotated
-        # buf_size_mb, time_loss_ms = self.compute_fitness(cur)
-        # annotate_chromosome_with_fitness(cur, buf_size_mb, time_loss_ms)
+        self.annotate_chromosome_with_fitness(cur)
         cur_buf_size = cur.buf_size
         best = cur
         best_buf_size = cur_buf_size
@@ -125,9 +111,6 @@ class MMSgaParallel:
 
         # ... and 2. there is something to select, and 3. done epochs < max_epochs,
         while chromosomes_to_select > 0 and cur_epoch < self.epochs:
-            # epoch-start timer
-            epoch_start_time = time.time()
-
             self.make_iteration(chromosomes_to_select)
             chromosomes_to_select = int(len(self.population) * self.selection_percent / 100)
             cur_epoch = cur_epoch + 1
@@ -147,15 +130,9 @@ class MMSgaParallel:
                     best.print_short()
                 improved = True
 
-            # epoch-end timer
-            epoch_end_time = time.time()
-            hours, rem = divmod(epoch_end_time - epoch_start_time, 3600)
-            minutes, seconds = divmod(rem, 60)
-
             if self.verbose:
                 print("EPOCH: ", cur_epoch, "epoch best memory: ", cur_buf_size, "GA best memory: ", best_buf_size)
                 print("population size", len(self.population))
-                print("epoch time: {:0>2}:{:0>2}:{:05.2f}".format(int(hours), int(minutes), seconds))
 
             if improved:
                 no_improvement_epochs = 0
@@ -168,14 +145,8 @@ class MMSgaParallel:
 
                 if self.verbose:
                     best.print_short()
-
-                # return results
-                if self.return_pareto:
-                    # sort pareto by buffer size in descending order
-                    self.pareto_across_dse = sorted(self.pareto_across_dse, key=lambda x: x.buf_size, reverse=False)
-                    return self.pareto_across_dse
-                else:
-                    return best
+                return best.dp_by_parts
+                # return partitions
 
             if chromosomes_to_select == 0:
                 if self.verbose:
@@ -191,14 +162,9 @@ class MMSgaParallel:
             best.print_short()
             fin_eval = best.buf_size
             if self.verbose:
-                print("fin best buffers size: ", fin_eval)
-        # return results
-        if self.return_pareto:
-            # sort pareto by buffer size in descending order
-            self.pareto_across_dse = sorted(self.pareto_across_dse, key=lambda x: x.buf_size, reverse=False)
-            return self.pareto_across_dse
-        else:
-            return best
+                print("fin buffers size: ", fin_eval)
+        return best.dp_by_parts
+        # return partitions
 
     def make_iteration(self, chromosomes_to_select):
         """
@@ -208,6 +174,7 @@ class MMSgaParallel:
        - set current population = selected chromosomes + their children
        - mutate mutation_percent of population with probability = mutation_probability
         """
+
         # select top chromosomes_to_select from current population
         self.select(chromosomes_to_select)
 
@@ -220,97 +187,8 @@ class MMSgaParallel:
 
         # set current offspring as selected offspring
         self.population = self.selected_offspring
-
-        # make mutation_percent of the population more diverse by mutating them
+        # make mutation_percent of our population more diverse with probability mutation_probability
         self.mutate()
-
-        # estimate fitness of chromosomes
-        self.annotate_chromosomes_with_fitness_parr()
-
-        # sort chromosomes by memory cost (descending)
-        self.population = sorted(self.population, key=lambda x: x.buf_size, reverse=False)
-
-        # update pareto-front
-        self.update_pareto_front()
-
-    def update_pareto_front(self):
-        current_pareto = select_pareto(self.population)
-        self.pareto_across_dse = merge_pareto_fronts(self.pareto_across_dse, current_pareto)
-
-    """
-    Evaluation of chromosome in terms of fitness function (time loss and buffers size)
-    """
-
-    def annotate_chromosomes_with_fitness_parr(self):
-        """ Parallel evaluation: self.parr_threads (specified as GA input) are used to perform evaluation"""
-        # split chromosomes in batches
-        batch_size = self.parr_threads
-        chromosomes_num = len(self.population)
-        batches_num = math.ceil(chromosomes_num/batch_size)
-
-        # chromosomes are processed in parallel batches
-        batches = self.generate_chromosomes_batches(chromosomes_num, batches_num, batch_size)
-
-        if self.verbose:
-            print("eval ", chromosomes_num, "chromosomes in", len(batches), "parallel batches",
-                  len(batches[0]), "chromosomes each (",
-                  len(batches[-1]), " chromosomes in the last batch)")
-
-        # evaluate fitness per batch (in parallel)
-        fitness_per_batch = []
-        for batch in batches:
-            batch_fitness = self.compute_batch_fitness(batch)
-            fitness_per_batch.append(batch_fitness)
-
-        # annotate every chromosome with fitness
-        chromosome_id = 0
-        for batch_fitness in fitness_per_batch:
-            for chromosome_fitness in batch_fitness:
-                buf_size_mb, time_loss_ms = chromosome_fitness
-                self.population[chromosome_id].buf_size = buf_size_mb
-                self.population[chromosome_id].time_loss = time_loss_ms
-                chromosome_id += 1
-
-    def compute_batch_fitness(self, chromosomes_batch):
-
-        # create parallel threads pool
-        pool = Pool(processes=len(chromosomes_batch))
-        # map the eval function to the batches (eval chromosomes per-batch in parallel)
-        batch_fitness = pool.map(self.compute_fitness, chromosomes_batch)
-        return batch_fitness
-
-    def generate_chromosomes_batches(self, chromosomes_num, batches_num, batch_size):
-        batches = []
-
-        # generate batches
-        for i in range(batches_num):
-            batch_start_id = i*batch_size
-            batch_end_id = min((i+1)*batch_size, chromosomes_num)
-            chromosomes_batch = self.population[batch_start_id:batch_end_id]
-            batches.append(chromosomes_batch)
-
-        # annotate chromosomes with respective dnn copy
-        for batch in batches:
-            for chromosome_id in range(len(batch)):
-                batch[chromosome_id].dnn = self.dnn_copies[chromosome_id]
-
-        return batches
-
-    def compute_fitness(self, chromosome):
-        """
-        Evaluate chromosome in terms of throughput loss and buffers size
-        :param chromosome: MMS chromosome to be evaluated, annotated with dnn
-        :return: buf_size_mb, time_loss_ms where
-            buf_size_mb (float) is the dnn buffers size (in megabytes)
-            time_loss_ms (float) is the latency loss (delay) caused by data processing by parts
-        """
-
-        phases_per_layer = get_phases_per_layer(chromosome.dnn, chromosome, self.max_phases_per_layer)
-        time_loss_ms = eval_chromosome_time_loss_ms(phases_per_layer)
-        buf_size_mb = eval_dnn_buffers_size_mb(chromosome.dnn, phases_per_layer, self.data_token_size)
-
-        # return evaluation
-        return buf_size_mb, time_loss_ms
 
     """
     GA operators
@@ -323,10 +201,33 @@ class MMSgaParallel:
         """
         self.selected_offspring = []
 
+        # evaluate current population in terms of  fitness function (time loss and buffers size)
+        for chromosome in self.population:
+            self.annotate_chromosome_with_fitness(chromosome)
+
+        # sort chromosomes by memory cost (descending)
+        self.population = sorted(self.population, key=lambda x: x.buf_size, reverse=False)
+
         # select top selection_percent chromosomes of current population
         for i in range(chromosomes_to_select):
             chromosome = self.population[i]
             self.selected_offspring.append(chromosome)
+
+    def annotate_chromosome_with_fitness(self, chromosome):
+        """ Annotate chromosome with fitness function: with time loss and buffers size"""
+        # evaluate chromosome in terms of throughput loss and buffers size
+        phases_per_layer_per_partition_per_dnn = get_phases_per_layer_per_partition_per_dnn(self.partitions_per_dnn,
+                                                                                            chromosome,
+                                                                                            self.max_phases_per_layer_per_partition_per_dnn)
+
+        time_loss_ms = eval_chromosome_time_loss_ms_multi_pipeline(phases_per_layer_per_partition_per_dnn)
+        buf_size_mb = eval_dnn_buffers_size_multi_pipelined_mb(self.partitions_per_dnn,
+                                                               phases_per_layer_per_partition_per_dnn,
+                                                               self.data_token_size)
+
+        # annotate chromosome
+        chromosome.time_loss = time_loss_ms
+        chromosome.buf_size = buf_size_mb
 
     def mutate(self):
         """
@@ -365,32 +266,36 @@ class MMSgaParallel:
         return child_chromosome
 
 
-def get_phases_per_layer(dnn: DNN, chromosome: MMSChromosome, max_phases_per_layer):
+def get_phases_per_layer_per_partition_per_dnn(partitions_per_dnn: [],
+                                               chromosome: MMSChromosome,
+                                               max_phases_per_layer_per_partition_per_dnn):
     """
     Determine number of phases performed by every DNN layer with respective MMS chromosome
-    :param dnn: DNN
+    :param partitions_per_dnn: list of pipelined partitions per dnn
     :param chromosome: MMS chromosome
-    :param max_phases_per_layer: dictionary where key = name of layer within the dnn,
-    value = maximum number of phases that can be ever performed by this layer
-    :return: phases_per_layer: dictionary where key = name of layer within the dnn,
-    value =number of phases that are performed by this layer according to MMSChromosome
+    :param max_phases_per_layer_per_partition_per_dnn:
     """
-    layers = dnn.get_layers()
-    phases_per_layer = {}
-    for layer_id in range(chromosome.layers_num):
-        layer = layers[layer_id]
-        dp_by_parts_flag = chromosome.dp_by_parts[layer_id]
-        # data processing by parts
-        if dp_by_parts_flag is True:
-            phases_per_layer[layer.name] = max_phases_per_layer[layer.name]
-        else:
-            # no data processing by parts
-            phases_per_layer[layer.name] = 1
-    return phases_per_layer
+    phases_per_layer_per_partition_per_dnn = []
+    dnns_num = len(partitions_per_dnn)
+    layer_id_in_chromosome = 0
+    for dnn_id in range(dnns_num):
+        max_ph_per_dnn = max_phases_per_layer_per_partition_per_dnn[dnn_id]
+        ph_per_dnn = {}
+        partitions = partitions_per_dnn[dnn_id]
+        for partition in partitions:
+            max_ph_per_dnn_per_partition = max_ph_per_dnn[partition.name]
+            ph_per_dnn_per_partition = {}
+            for layer in partition.get_layers():
+                dp_by_parts_flag = chromosome.dp_by_parts[layer_id_in_chromosome]
+                # data processing by parts
+                if dp_by_parts_flag is True:
+                    ph_per_dnn_per_partition[layer.name] = max_ph_per_dnn_per_partition[layer.name]
+                else:
+                    # no data processing by parts
+                    ph_per_dnn_per_partition[layer.name] = 1
+                layer_id_in_chromosome += 1
+            ph_per_dnn[partition.name] = ph_per_dnn_per_partition
+        phases_per_layer_per_partition_per_dnn.append(ph_per_dnn)
 
+    return phases_per_layer_per_partition_per_dnn
 
-def annotate_chromosome_with_fitness(chromosome, buf_size_mb, time_loss_ms):
-    """ Annotate chromosome with fitness function: with time loss and buffers size"""
-    chromosome.time_loss = time_loss_ms
-    chromosome.buf_size = buf_size_mb
-    print("chromosome buf size:", buf_size_mb, ", time loss: ", time_loss_ms)

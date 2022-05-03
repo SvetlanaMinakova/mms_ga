@@ -20,7 +20,7 @@ def run_ga_parallel_multi(json_dnn_paths,
     from models.dnn_model.transformation.external_ios_processor import external_ios_to_data_layers
     import traceback
     from util import print_to_stderr
-    from low_memory.mms.ga_based.multi_thread.MMSgaParallelMultiPipeline import MMSgaParallelMultiPipeline
+    from DSE.low_memory.mms.ga_based.multi_thread.MMSgaParallelMultiPipeline import MMSgaParallelMultiPipeline
 
     stage = "DNNs parsing"
     try:
@@ -112,7 +112,7 @@ def run_ga(json_dnn_path, json_ga_conf_path, parr_threads, output_file_path):
     from converters.json_converters.mms_chromosomes_to_json import mms_chromosomes_to_json
     import traceback
     from util import print_to_stderr
-    from low_memory.mms.ga_based.multi_thread.MMSgaParallel import MMSgaParallel
+    from DSE.low_memory.mms.ga_based.multi_thread.MMSgaParallel import MMSgaParallel
 
     stage = "DNN parsing"
     try:

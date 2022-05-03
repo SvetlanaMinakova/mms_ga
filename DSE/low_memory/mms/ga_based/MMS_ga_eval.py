@@ -1,6 +1,6 @@
 from models.dnn_model.dnn import DNN
 from eval.memory.csdf_model_mem_eval import eval_csdf_buffers_memory_mb
-from low_memory.mms.buf_building import get_mms_buffers, get_mms_buffers_multi_pipelined
+from DSE.low_memory.mms.buf_building import get_mms_buffers, get_mms_buffers_multi_pipelined
 
 ############################
 # Eval functions for MMS-GA

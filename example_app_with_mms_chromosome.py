@@ -1,9 +1,9 @@
 from models.dnn_model.dnn import DNN, Layer
 from converters.dnn_to_task_graph import dnn_to_task_graph
 from dnn_partitioning.after_mapping.partition_dnn_with_mapping import partition_dnn_with_task_graph_and_mapping
-from low_memory.mms.ga_based.MMSChromosome import MMSChromosome
-from low_memory.mms.buf_building import get_mms_buffers_multi_pipelined
-from low_memory.mms.ga_based.multi_thread.MMSgaParallelMultiPipeline import get_phases_per_layer_per_partition_per_dnn,\
+from DSE.low_memory.mms.ga_based.MMSChromosome import MMSChromosome
+from DSE.low_memory.mms.buf_building import get_mms_buffers_multi_pipelined
+from DSE.low_memory.mms.ga_based.multi_thread.MMSgaParallelMultiPipeline import get_phases_per_layer_per_partition_per_dnn,\
     get_max_phases_per_layer_per_partition_per_dnn, MMSgaParallelMultiPipeline
 from models.dnn_model.transformation.external_ios_processor import external_ios_to_data_layers
 from converters.json_converters.mms_chromosomes_to_json import mms_chromosomes_to_json

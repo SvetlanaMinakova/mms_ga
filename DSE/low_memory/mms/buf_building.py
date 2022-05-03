@@ -1,10 +1,10 @@
 
-from low_memory.dp_by_parts import get_max_phases_per_layer, eval_thr_loss, reset_phases
+from DSE.low_memory.dp_by_parts import reset_phases
 from converters.dnn_to_csdf import dnn_to_csfd_one_to_one
-from low_memory.dp_by_parts import get_max_phases_per_layer, annotate_layers_with_phases
+from DSE.low_memory.dp_by_parts import annotate_layers_with_phases
 from simulation.csdf_simulation import simulate_execution_asap
 from models.csdf_model.csdf import check_csdfg_consistency
-from low_memory.buf_reuse_from_simulation import build_csdfg_reuse_buffers_from_sim_trace, minimize_csdfg_buf_sizes, \
+from DSE.low_memory.buf_reuse_from_simulation import build_csdfg_reuse_buffers_from_sim_trace, minimize_csdfg_buf_sizes, \
     reuse_buffers_among_csdf
 from models.data_buffers import build_naive_csdfg_buffers
 

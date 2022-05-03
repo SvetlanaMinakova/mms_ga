@@ -1,7 +1,5 @@
 {
-  "app_name": "test_dnn",
-  "json_dnn_paths": ["./data/json_dnn/CNN1.json"],
-  "json_ga_conf_path" : "./data/mms_ga_configs/testDNN_ga_conf.json"
+    "app_name": "test_dnn",
+    "json_dnn_paths": ["./data/json_dnn/CNN1.json"],
+    "json_ga_conf_path" : "./data/mms_ga_configs/testDNN_ga_conf.json"
 }
-            
-           

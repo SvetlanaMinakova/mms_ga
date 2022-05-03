@@ -1,4 +1,4 @@
-from low_memory.mms.ga_based.MMSChromosome import MMSChromosome
+from DSE.low_memory.mms.ga_based.MMSChromosome import MMSChromosome
 from converters.json_converters.JSONNestedClassVisitor import JSONNestedClassVisitor
 from models.dnn_model.dnn import DNN
 

@@ -1,11 +1,11 @@
 import math
 
-from low_memory.mms.ga_based.MMSChromosome import MMSChromosome
+from DSE.low_memory.mms.ga_based.MMSChromosome import MMSChromosome
 from models.dnn_model.dnn import DNN
-from low_memory.dp_by_parts import get_max_phases_per_layer # , eval_thr_loss, reset_phases
-from low_memory.mms.ga_based.MMS_ga_eval import eval_chromosome_time_loss_ms_multi_pipeline,\
+from DSE.low_memory.dp_by_parts import get_max_phases_per_layer # , eval_thr_loss, reset_phases
+from DSE.low_memory.mms.ga_based.MMS_ga_eval import eval_chromosome_time_loss_ms_multi_pipeline,\
     eval_dnn_buffers_size_multi_pipelined_mb
-from low_memory.mms.ga_based.MMSParetoSelection import select_pareto, merge_pareto_fronts
+from DSE.low_memory.mms.ga_based.MMSParetoSelection import select_pareto, merge_pareto_fronts
 import random
 import copy
 import time
@@ -166,7 +166,8 @@ class MMSgaParallelMultiPipeline:
 
             if cur_buf_size < best_buf_size:
                 if self.verbose:
-                    print("epoch", cur_epoch, " cur buffers size ", cur_buf_size, " < ", "best buffers size", best_buf_size, "best result reset to")
+                    print("epoch", cur_epoch, " cur buffers size ", cur_buf_size, " < ",
+                          "best buffers size", best_buf_size, "best result reset to")
                 best = cur
                 best_buf_size = cur_buf_size
                 if self.verbose:
