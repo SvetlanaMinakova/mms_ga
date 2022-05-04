@@ -13,6 +13,7 @@ def main():
     # required arguments
     parser.add_argument('-c', '--config', type=str, action='store',
                         help='path to .json application config', required=True)
+
     parser.add_argument('-t', '--threads', type=int, action='store',
                         help='number of parallel CPU threads', required=True)
     # general flags
