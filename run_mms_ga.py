@@ -7,14 +7,12 @@ import traceback
 Console-interface script for GA-based search
 """
 
-# example use on local machine
-# python3 main.py -c ./config/local_config.json
-
 
 def main():
     parser = argparse.ArgumentParser(description='Train an onnx model with iterations')
     # required arguments
-    parser.add_argument('-c', '--config', type=str, action='store', help='path to .json config', required=True)
+    parser.add_argument('-c', '--config', type=str, action='store',
+                        help='path to .json application config', required=True)
     parser.add_argument('-t', '--threads', type=int, action='store',
                         help='number of parallel CPU threads', required=True)
     # general flags

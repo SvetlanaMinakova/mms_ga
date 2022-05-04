@@ -242,30 +242,6 @@ def try_parse_app_config(app_config_path, info_level):
         print("  - FAILURE")
     return None
 
-"""
-def run_test_ga_multi_dnn():
-    from util import get_project_root
-    from DSE.low_memory.mms.ga_based.multi_thread.mms_ga import run_ga_parallel_multi
-
-    project_root_path = str(get_project_root())
-
-    dnn1_path = project_root_path + "/data/json_dnn/CNN1.json"
-    dnn2_path = project_root_path + "/data/json_dnn/CNN2.json"
-    dnn_paths = [dnn1_path, dnn2_path]
-
-    dnn1_mapping_path = None
-    dnn2_mapping_path = project_root_path + "/data/pipeline_parallelism/CNN2.json"
-    mapping_paths = [dnn1_mapping_path, dnn2_mapping_path]
-
-    ga_conf_path = project_root_path + "/data/mms_ga_configs/testDNN_ga_conf.json"
-    ga_output_path = project_root_path + "/output/cnn1_cnn2_no_pipeline_pareto.json"
-
-    # script parameters
-    parr_threads = 6
-
-    # run script
-    run_ga_parallel_multi(dnn_paths, mapping_paths, ga_conf_path, parr_threads, ga_output_path)
-"""
 
 if __name__ == "__main__":
     main()

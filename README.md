@@ -15,10 +15,12 @@ The inputs and outputs of the tool are specific per toolflow step (see section "
 
 ## Toolflow
 The tool flow consists of following subsequent steps:
-* **GA-based search** (*run_mms_ga.py*). During this step, the tool uses a Genetic Algorithm (GA) to explore efficient manners to reduce the amount of target platform memory required to store intermediate computational results (buffers) of a DNN-based application.
-* **Selection**. At this step, the best solution (manner of DNN-based application memory reduction) is chosen from solutions, delivered by the GA.
+* **GA-based search** (*run_mms_ga.py*). During this step, the tool uses a Genetic Algorithm (GA) to explore efficient manners to reduce the amount of target platform memory required to store intermediate computational results (buffers) of DNNs used by a DNN-based application.
+* **Selection**. At this step, the best GA solution (manner of DNN-based application memory reduction) is chosen from the solutions, delivered by the GA-based search.
 
 ### GA-based search
+
+During this step, the tool uses a Genetic Algorithm (GA) to explore efficient manners to reduce the amount of target platform memory required to store intermediate computational results (buffers) of DNNs used by a DNN-based application.
 
 #### Inputs and outputs
 The GA-based search step accepts as **input** an application config in [JSON](https://www.json.org/json-en.html) format (see examples in ./data/mms_ga_configs), and number of parallel CPU threads to run GA on. An application config specifies:
@@ -32,9 +34,7 @@ where every solution is a manner of CNN-based memory reduction. A chromosome is 
 
 #### Chromosome
 A chromosome is a genetically encoded solution. In MMS, a solution is a manner of CNN-based memory reduction, which involves 
-utilization of data processing by parts and buffers reuse techniques, briefly mentioned above.
-
-In MMS, chromosome encodes the amount of data processing by parts, exploited by every layer of every DNN in the input DNN-based application.
+utilization of data processing by parts and buffers reuse techniques, briefly mentioned above. A chromosome in MMS encodes the amount of data processing by parts, exploited by every layer of every DNN in the input DNN-based application.
 It is defined as a string of *N* elements where, *N* is a total number of layers in every DNN, used by a DNN-based application. 
 For example, if a DNN-based application uses two CNNs, CNN1 and CNN1, where CNN1 has 2 layers and CNN2 has 3 layers, then for this application *N=2+3=5*.
 
@@ -55,6 +55,12 @@ Example chromosomes can be found in *./output/example_app.json*.
 To perform GA-based search, algorithm uses standard two-parent crossover and a single-gene mutation as presented in **Genetic Algorithms. Springer US, Boston** by Kumara Sastry, David Goldberg, and Graham Kendall.
 
 #### Example use
+Run MMS for a CNN-based application, specified in ./data/app_configs/test_app_conf.json config file. Execute GA in parallel on 3 CPU cores.
+
+    python run_mms_ga.py -c ./data/app_configs/test_app_conf.json -t 3
 
 ### Selection
+At this step, the best GA solution (manner of DNN-based application memory reduction) is chosen from the solutions, delivered by the GA-based search.
+
+#### Inputs and outputs
 

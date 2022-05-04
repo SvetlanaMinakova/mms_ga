@@ -1,11 +1,36 @@
-def select_chromosome(ga_json_output_path):
+def select_best_chromosome(ga_json_output_path, max_buf_size_mb=-1, max_latency_loss_ms=-1):
     """
-    Select a chromosome from a pareto front
-    :param ga_json_output_path: path to the pareto front
+    Select best chromosome from a pareto front
+    :param ga_json_output_path: path to the pareto front produced by the GA-based search
     saved in the .json file
-    :return: chromosome
+    :param max_buf_size_mb: memory constraint, i.e., maximum amount of memory (in megaBytes)
+        occupied by the application buffers. If = -1, an application does not have a memory constraint
+    :param max_latency_loss_ms: latency loss constraint, i.e., maximum amount of execution time
+        delay (latency) introduced into application by the DNN-based application memory reduction.
+        If -1, the application does not have the latency loss constraint
+    :return: best chromosome, selected from the pareto front
     """
     pass
+
+
+def filter_chromosomes(json_chromosomes: [], max_buf_size_mb=-1, max_latency_loss_ms=-1):
+    """
+    Filter json chromosomes and return only those chromosomes that meet memory cost and latency loss constraints
+    :param json_chromosomes: list of chromosomes, represented as json-dictionary
+    :param max_buf_size_mb: memory constraint, i.e., maximum amount of memory (in megaBytes)
+        occupied by the application buffers. If = -1, an application does not have a memory constraint
+    :param max_latency_loss_ms: latency loss constraint, i.e., maximum amount of execution time
+        delay (latency) introduced into application by the DNN-based application memory reduction.
+        If -1, the application does not have the latency loss constraint
+    :return: list of chromosomes, represented as json-dictionary, where every chromosome meets
+        memory cost and latency loss constraints
+    """
+    json_chromosomes_filtered = []
+    for json_chromosome in json_chromosomes:
+        if max_buf_size_mb == -1 or json_chromosome["buf_size"] <= max_buf_size_mb:
+            if max_latency_loss_ms == -1 or json_chromosome["time_loss"] <= max_latency_loss_ms:
+                json_chromosomes_filtered.append(json_chromosome)
+    return json_chromosomes_filtered
 
 
 def print_pareto(ga_json_output_path):
@@ -28,6 +53,7 @@ def print_pareto(ga_json_output_path):
         print(round(buf_size, buf_size_round), ";", phases)
 
 
+"""
 app1_ga_result = "/home/svetlana/Documents/mms_ga/output/app1_0_9585_9hrs.json"
 app1_ga_result02 = "/home/svetlana/Documents/mms_ga/output_2/app1_4_152_50ep_2hr_02_preset.json"
 
@@ -41,3 +67,4 @@ app6_ga_result = "/home/svetlana/Documents/mms_ga/output/app6_9_255_164ep_21hr.j
 
 app_resnet_ga_result = "/home/svetlana/Documents/mms_ga/output_2/app_resnet50.json"
 print_pareto(app_resnet_ga_result)
+"""
