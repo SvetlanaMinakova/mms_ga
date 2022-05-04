@@ -63,7 +63,7 @@ def run_integration_test(info_level):
     if info_level > 0:
         print("RUN INTEGRATION TEST")
     # steps (scripts) in execution order
-    steps = ["ga_single_dnn"]
+    steps = ["ga_single_dnn", "ga_single_dnn_pipeline", "ga_multi_dnn", "ga_multi_dnn_pipeline"]
     for step in steps:
         step_executed = run_test_step(step, info_level)
         if step_executed is False:

@@ -15,7 +15,8 @@ def main():
     parser = argparse.ArgumentParser(description='The script runs unit (per-step) tests for an example '
                                                  'CNN and an example platform, defined in ./test_config.py')
     parser.add_argument("-s", "--step", type=str, action='store', required=True,
-                        help='Script (step) to test. Select from [ga_single_dnn]')
+                        help='Script (step) to test. Select from [ga_single_dnn, ga_single_dnn_pipeline, '
+                             'ga_multi_dnn, ga_multi_dnn_pipeline ]')
 
     parser.add_argument('--info-level', metavar='--info-level', type=int, action='store', default=1,
                         help='Info-level, i.e., amount of information to print out during the tests run. '
@@ -50,12 +51,22 @@ def run_test_step(step: str, info_level):
     if step == "ga_single_dnn":
         result = run_test_ga_single_dnn(config, info_level)
         return result
+    if step == "ga_single_dnn_pipeline":
+        result = run_test_ga_single_dnn_pipeline(config, info_level)
+        return result
+    if step == "ga_multi_dnn":
+        result = run_test_ga_multi_dnn(config, info_level)
+        return result
+    if step == "ga_multi_dnn_pipeline":
+        result = run_test_ga_multi_dnn_pipeline(config, info_level)
+        return result
 
     raise Exception("Unknown tests step: " + step)
 
 
-def run_test_ga_single_dnn(config: {}, info_level=1):
+def run_test_ga_single_dnn(config: {}, info_level):
     """
+    Run GA-based search for a single-DNN application with no pipeline parallelism
     :param config: test app_config (see ../test_config.py)
         by subsequent scripts of the tool
     :param info_level: amount of information to print out during the tests run.
@@ -72,9 +83,66 @@ def run_test_ga_single_dnn(config: {}, info_level=1):
     return test_passed
 
 
+def run_test_ga_single_dnn_pipeline(config: {}, info_level):
+    """
+    Run GA-based search for a single-DNN application with pipeline parallelism
+    :param config: test app_config (see ../test_config.py)
+        by subsequent scripts of the tool
+    :param info_level: amount of information to print out during the tests run.
+        If info-level == 0, no information is printed to console.
+        If info-level == 1, only tests information (e.g., which steps of the tests were successful)
+        is printed to console.
+        If info-level == 2, tests information (e.g., which steps of the tests were successful)
+        as well as script-specific verbose output is printed to the console
+    :return: True if tests ran successfully and False otherwise
+    """
+    app_config_path = str(os.path.join(config["app_configs_dir"], "single_dnn_pipeline.json"))
+    test_passed = run_test_case_ga(app_config_path, config, info_level,
+                                   "Single-CNN application with pipeline parallelism")
+    return test_passed
+
+
+def run_test_ga_multi_dnn(config: {}, info_level):
+    """
+    Run GA-based search for a multi (two)-DNN application with no pipeline parallelism
+    :param config: test app_config (see ../test_config.py)
+        by subsequent scripts of the tool
+    :param info_level: amount of information to print out during the tests run.
+        If info-level == 0, no information is printed to console.
+        If info-level == 1, only tests information (e.g., which steps of the tests were successful)
+        is printed to console.
+        If info-level == 2, tests information (e.g., which steps of the tests were successful)
+        as well as script-specific verbose output is printed to the console
+    :return: True if tests ran successfully and False otherwise
+    """
+    app_config_path = str(os.path.join(config["app_configs_dir"], "multi_dnn.json"))
+    test_passed = run_test_case_ga(app_config_path, config, info_level,
+                                   "Multi-CNN (two-CNN) application with no pipeline parallelism")
+    return test_passed
+
+
+def run_test_ga_multi_dnn_pipeline(config: {}, info_level):
+    """
+    Run GA-based search for a multi (two)-DNN application with pipeline parallelism
+    :param config: test app_config (see ../test_config.py)
+        by subsequent scripts of the tool
+    :param info_level: amount of information to print out during the tests run.
+        If info-level == 0, no information is printed to console.
+        If info-level == 1, only tests information (e.g., which steps of the tests were successful)
+        is printed to console.
+        If info-level == 2, tests information (e.g., which steps of the tests were successful)
+        as well as script-specific verbose output is printed to the console
+    :return: True if tests ran successfully and False otherwise
+    """
+    app_config_path = str(os.path.join(config["app_configs_dir"], "multi_dnn_pipeline.json"))
+    test_passed = run_test_case_ga(app_config_path, config, info_level,
+                                   "Multi-CNN (two-CNN) application with pipeline parallelism")
+    return test_passed
+
+
 def run_test_case_ga(app_config_path, test_config: {}, info_level, test_case_description: ""):
-    """ Run test "run_mms_ga.py" script on test application app_config
-    :param app_config_path: path to .json file with application configuration
+    """ Run test "run_mms_ga.py" script for a test application
+    :param app_config_path: path to .json file with the test application configuration
     :param test_config: test app_config (see ../test_config.py)
         by subsequent scripts of the tool
     :param info_level: amount of information to print out during the tests run.
@@ -174,7 +242,7 @@ def try_parse_app_config(app_config_path, info_level):
         print("  - FAILURE")
     return None
 
-
+"""
 def run_test_ga_multi_dnn():
     from util import get_project_root
     from DSE.low_memory.mms.ga_based.multi_thread.mms_ga import run_ga_parallel_multi
@@ -197,7 +265,7 @@ def run_test_ga_multi_dnn():
 
     # run script
     run_ga_parallel_multi(dnn_paths, mapping_paths, ga_conf_path, parr_threads, ga_output_path)
-
+"""
 
 if __name__ == "__main__":
     main()
