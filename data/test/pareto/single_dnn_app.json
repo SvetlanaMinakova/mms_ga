@@ -1,0 +1,48 @@
+{
+    "chromosomes": [
+        {
+            "layers_num": 4,
+            "dp_by_parts": [
+                true,
+                true,
+                true,
+                true
+            ],
+            "time_loss": 0.029,
+            "buf_size": 0.027008
+        },
+        {
+            "layers_num": 4,
+            "dp_by_parts": [
+                true,
+                false,
+                false,
+                true
+            ],
+            "time_loss": 0.0155,
+            "buf_size": 0.037376
+        },
+        {
+            "layers_num": 4,
+            "dp_by_parts": [
+                false,
+                false,
+                true,
+                true
+            ],
+            "time_loss": 0.0,
+            "buf_size": 0.037376
+        },
+        {
+            "layers_num": 4,
+            "dp_by_parts": [
+                false,
+                true,
+                true,
+                false
+            ],
+            "time_loss": 0.0135,
+            "buf_size": 0.037376
+        }
+    ]
+}
