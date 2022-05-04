@@ -1,6 +1,7 @@
 import json
 from converters.json_converters.json_util import extract_or_default
 from util import get_project_root
+import os
 
 
 def parse_app_conf(path):
@@ -31,7 +32,7 @@ def parse_app_conf(path):
 
             if "output_file_path" not in conf:
                 project_root_path = str(get_project_root())
-                ga_output_path = project_root_path + "/output/" + conf["app_name"] + ".json"
+                ga_output_path = str(os.path.join(project_root_path, "output", (conf["app_name"] + ".json")))
                 conf_as_dict["output_file_path"] = ga_output_path
 
             return conf_as_dict

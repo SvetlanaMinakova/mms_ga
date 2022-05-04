@@ -1,0 +1,5 @@
+{
+  "app_name": "single_dnn_app",
+  "json_dnn_paths": ["./../data/json_dnn/CNN2.json"],
+  "json_ga_conf_path" : "./../data/test/test_mms_ga_conf.json"
+}

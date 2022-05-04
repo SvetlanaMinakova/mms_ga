@@ -49,3 +49,10 @@ def milli():
 def print_or_skip(txt, verbose):
     if verbose:
         print(txt)
+
+
+def print_stage(stage: str, verbose):
+    """ Helper-printout function for API scripts with per-stage verbose output"""
+    if verbose:
+        print("STAGE:", stage)
+

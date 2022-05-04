@@ -82,11 +82,11 @@ def find_reuse_buffer(reuse_buffers, dnn, new_connection, reuse_among_dnn, pipel
 
         pipeline_mapping = pipelined_dnns_mappings[dnn.name]
         new_src_proc_id = find_proc_id(new_connection.src, pipeline_mapping)
-        # new_dst_proc_id = find_proc_id(new_connection.dst, pipeline_mapping)
+        # new_dst_proc_id = find_proc_id(new_connection.dst, pipeline_parallelism)
         stored_connections = reuse_buf.connections_per_dnn[dnn]
         for stored_connection in stored_connections:
             stored_src_proc_id = find_proc_id(stored_connection.src, pipeline_mapping)
-            # new_dst_proc_id = find_proc_id(new_connection.dst, pipeline_mapping)
+            # new_dst_proc_id = find_proc_id(new_connection.dst, pipeline_parallelism)
             if stored_src_proc_id != new_src_proc_id:
                 return True
 

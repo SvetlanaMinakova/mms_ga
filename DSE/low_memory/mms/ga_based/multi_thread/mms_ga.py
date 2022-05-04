@@ -2,7 +2,8 @@ def run_ga_parallel_multi(json_dnn_paths,
                           json_mapping_paths,
                           json_ga_conf_path,
                           parr_threads,
-                          output_file_path):
+                          output_file_path,
+                          verbose=True):
     """
     Run max memory save (mms) GA with support for multi-dnn and pipelined applications
     :param json_dnn_paths: list of paths to DNN models saved in .json format
@@ -11,6 +12,7 @@ def run_ga_parallel_multi(json_dnn_paths,
     :param parr_threads: parallel CPU threads to run GA on
     :param output_file_path: path to output json file, where the
      pareto-front of MMS-GA chromosomes, delivered by MMS-GA will be saved
+    :param verbose: print GA execution details into console
     """
     from converters.json_converters.json_to_dnn import parse_json_dnn
     from converters.json_converters.json_mms_ga_conf_parser import parse_mms_ga_conf
@@ -75,7 +77,7 @@ def run_ga_parallel_multi(json_dnn_paths,
                                         conf["dp_by_parts_init_probability"],
                                         conf["data_token_size"],
                                         parr_threads,
-                                        conf["verbose"])
+                                        verbose)
 
         stage = "GA initialization with first population"
         ga.init_with_random_population()
@@ -85,10 +87,14 @@ def run_ga_parallel_multi(json_dnn_paths,
 
         stage = "GA execution"
         pareto_front = ga.run()
-        print("GA returned pareto front of", len(pareto_front), "elements, with min-buffers chromosome:")
+        if verbose:
+            print("GA returned pareto front of", len(pareto_front), "elements, with min-buffers chromosome:")
+
         # best (in terms of buffers sizes) chromosome
         best_chromosome = pareto_front[0]
-        print(best_chromosome.dp_by_parts)
+
+        if verbose:
+            print(best_chromosome.dp_by_parts)
 
         stage = "Output JSON file generation"
         mms_chromosomes_to_json(pareto_front, output_file_path)

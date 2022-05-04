@@ -1,0 +1,6 @@
+{
+  "app_name": "single_dnn_app_pipeline",
+  "json_dnn_paths": ["./../data/json_dnn/CNN2.json"],
+  "json_ga_conf_path" : "./../data/test/test_mms_ga_conf.json",
+  "pipeline_mapping": ["./../data/test/pipeline_parallelism/single_dnn_pipeline.json"]
+}

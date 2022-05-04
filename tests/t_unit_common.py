@@ -1,6 +1,7 @@
 import os
 import subprocess
 import sys
+from fileworkers.common_fw import files_exist
 
 
 def run_script_and_check_output(script_root,
@@ -88,16 +89,4 @@ def run_script(script_root, script_name, input_param: {}, flags: [], info_level)
         print("  - script stderr:", result.stderr)
 
     return success
-
-
-def files_exist(files_abs_paths):
-    """
-    Check if files exist
-    :param files_abs_paths abs paths to files
-    :return: True if all the files exist, False otherwise
-    """
-    for file_path in files_abs_paths:
-        if not os.path.exists(file_path):
-            return False
-    return True
 

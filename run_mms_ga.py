@@ -1,9 +1,10 @@
 import argparse
 from os.path import dirname
 import sys
+import traceback
 
 """
-Console-interface script for run/debug DNN training
+Console-interface script for GA-based search
 """
 
 # example use on local machine
@@ -16,6 +17,9 @@ def main():
     parser.add_argument('-c', '--config', type=str, action='store', help='path to .json config', required=True)
     parser.add_argument('-t', '--threads', type=int, action='store',
                         help='number of parallel CPU threads', required=True)
+    # general flags
+    parser.add_argument("--silent", help="do not provide print-out for the script steps",
+                        action="store_true", default=False)
 
     # parse arguments
     args = parser.parse_args()
@@ -28,22 +32,34 @@ def main():
     # import sub-modules
     from DSE.low_memory.mms.ga_based.multi_thread.mms_ga import run_ga_parallel_multi
     from converters.json_converters.json_app_config_parser import parse_app_conf
+    from util import print_stage
 
-    # parse config
-    conf_file = args.config
-    parr_threads = args.threads
-    conf = parse_app_conf(conf_file)
+    try:
+        # parse config
+        conf_file = args.config
+        parr_threads = args.threads
+        silent = args.silent
+        verbose = not silent
 
-    print("script executed with config: ")
-    for item in conf.items():
-        print(item)
+        stage = "Parsing application configuration"
+        print_stage(stage, verbose)
+        conf = parse_app_conf(conf_file)
+        if verbose:
+            print("script executed with config: ")
+            for item in conf.items():
+                print(item)
 
-    # run script
-    run_ga_parallel_multi(conf["json_dnn_paths"],
-                          conf["json_mapping_paths"],
-                          conf["json_ga_conf_path"],
-                          parr_threads,
-                          conf["output_file_path"])
+        # run script
+        run_ga_parallel_multi(conf["json_dnn_paths"],
+                              conf["json_mapping_paths"],
+                              conf["json_ga_conf_path"],
+                              parr_threads,
+                              conf["output_file_path"],
+                              verbose)
+
+    except Exception as e:
+        print("GA-based search error: " + str(e))
+        traceback.print_tb(e.__traceback__)
 
 
 def get_cur_directory():

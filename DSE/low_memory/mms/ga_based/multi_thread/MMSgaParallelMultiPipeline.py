@@ -83,10 +83,6 @@ class MMSgaParallelMultiPipeline:
         self.population = []
         self.selected_offspring = []
 
-        # evals are built in the chromosome
-        # self.time_evals = {}
-        # self.time_evals_sorted = {}
-
         self.verbose = verbose
 
         # new
@@ -116,7 +112,8 @@ class MMSgaParallelMultiPipeline:
 
         # init-end timer
         init_end_time = time.time()
-        print("init time:", time_elapsed_str(init_start_time, init_end_time))
+        if self.verbose:
+            print("init time:", time_elapsed_str(init_start_time, init_end_time))
 
     def generate_random_chromosome(self):
         random_chromosome = MMSChromosome(self.layers_num)
@@ -274,9 +271,10 @@ class MMSgaParallelMultiPipeline:
         batches = self.generate_chromosomes_batches(chromosomes_num, batches_num, batch_size)
 
         if print_batches:
-            print("eval ", chromosomes_num, "chromosomes in", len(batches), "parallel batches",
-                  len(batches[0]), "chromosomes each (",
-                  len(batches[-1]), " chromosomes in the last batch)")
+            if self.verbose:
+                print("eval ", chromosomes_num, "chromosomes in", len(batches), "parallel batches",
+                      len(batches[0]), "chromosomes each (",
+                      len(batches[-1]), " chromosomes in the last batch)")
 
         # evaluate fitness per batch (in parallel)
         fitness_per_batch = []
