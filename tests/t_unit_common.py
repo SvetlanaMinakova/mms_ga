@@ -34,6 +34,7 @@ def run_script_and_check_output(script_root,
         print("  - script successfully executed:", script_successfully_executed)
 
     # check the output files
+    # print("  - expected output paths:", output_file_paths)
     output_files_generated = files_exist(output_file_paths)
     if info_level > 0:
         print("  - script output files are successfully generated:", output_files_generated)

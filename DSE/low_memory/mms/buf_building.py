@@ -20,8 +20,15 @@ and among (buffers reuse) different layers
 # single dnn with no pipeline parallelism
 
 
-def get_mms_buffers(dnn, phases_per_layer):
-    """ Get data processing by parts + reuse buffers"""
+def get_mms_buffers_no_pipeline(dnn, phases_per_layer):
+    """
+    Get buffers with data processing by parts and buffers reuse for a single-DNN application
+    where memory reused within and among dnns and no pipeline parallelism is exploited
+    :param dnn: single DNN, used by the application
+    :param phases_per_layer:  dictionary with phases of the DNN, where key (str) = name of a DNN layer,
+        value (int) = number of phases, performed by the layer
+    :return: list of CSDF buffers, used by the application
+    """
     annotate_layers_with_phases(dnn, phases_per_layer)
     annotate_with_sim_time(dnn)
 
@@ -46,14 +53,24 @@ def get_mms_buffers(dnn, phases_per_layer):
 # single dnn with pipeline parallelism
 
 
-def get_mms_buffers_pipelined(dnn_partitions, phases_per_layer_per_dnn):
-    """ Get data processing by parts + reuse buffers"""
+def get_mms_buffers_pipelined(dnn_partitions, phases_per_layer_per_partition):
+    """
+    Get buffers with data processing by parts and buffers reuse for a single-DNN application
+    where memory reused within and among dnns and no pipeline parallelism is exploited
+    :param dnn_partitions: partitions (sub-networks) of the single DNN, used by the application
+    :param phases_per_layer_per_partition: list [dnn_phases_1, dnn_phases_2,...,dnn_phases_N]
+        where N is total number of dnn partitions (sub-networks),
+        dnn_phases_i, i in [1, N] is a dictionary with phases of i-th DNN partition,
+        where key (str) = name of layer in i-th DNN partition,
+        value (int) = number of phases, performed by the layer in i-th DNN partition
+    :return: list of CSDF buffers, used by the application
+    """
     # create buffers within partitions
     csdf_buffers_per_partition = []
     dp_reuse_buffers = []
 
     for partition in dnn_partitions:
-        annotate_layers_with_phases(partition, phases_per_layer_per_dnn[partition.name])
+        annotate_layers_with_phases(partition, phases_per_layer_per_partition[partition.name])
         annotate_with_sim_time(partition)
 
         csdf = dnn_to_csfd_one_to_one(partition)
@@ -90,24 +107,21 @@ def get_mms_buffers_pipelined(dnn_partitions, phases_per_layer_per_dnn):
 ########################################
 # multi-dnn with no pipeline parallelism
 
-def set_auto_buffer_names(csdf_buffers):
-    """
-    Set auto-names to CSDF buffers
-    :param csdf_buffers: CSDF buffers
-    """
-    buf_id = 0
-    for buf in csdf_buffers:
-        # rename buffer
-        buf.name = "B" + str(buf_id)
-        buf_id += 1
-
-
 def get_mms_buffers_multi(dnns, phases_per_layer_per_dnn):
-    """ Get buffers with data processing by parts where memory reused within and among dnns"""
+    """
+    Get buffers with data processing by parts and buffers reuse for a multi-CNN application
+    where memory reused within and among dnns and no pipeline parallelism is exploited
+    :param dnns: list of dnns
+    :param phases_per_layer_per_dnn: list [dnn_phases_1, dnn_phases_2,...,dnn_phases_N]
+        where N is total number of dnns, dnn_phases_i, i in [1, N] is a dictionary
+        with phases of i-th DNN, where key (str) = name of layer in i-th DNN,
+        value (int) = number of phases, performed by the layer
+    :return: list of CSDF buffers, used by the application
+    """
     buffers_per_dnn = []
 
     for dnn in dnns:
-        csdf_buffers = get_mms_buffers(dnn, phases_per_layer_per_dnn[dnn.name])
+        csdf_buffers = get_mms_buffers_no_pipeline(dnn, phases_per_layer_per_dnn[dnn.name])
         buffers_per_dnn.append(csdf_buffers)
 
     # reuse buffers among dnn (csdf)
@@ -119,16 +133,18 @@ def get_mms_buffers_multi(dnns, phases_per_layer_per_dnn):
 ########################################
 # multi-dnn with no pipeline parallelism
 
-def get_mms_buffers_multi_pipelined(partitions_per_dnn: [], phases_per_layer_per_partition_per_dnn: []):
+def get_mms_buffers_multi_pipelined(partitions_per_dnn: [],
+                                    phases_per_layer_per_partition_per_dnn: []):
     """
-    Get buffers with data processing by parts where memory reused within and among dnns
+    Get buffers with data processing by parts and buffers reuse for a multi-CNN application
+        where memory reused within and among dnns and pipeline parallelism is exploited
     :param partitions_per_dnn: list [partitions_1, partitions_2, ..., partitionsN] where
-    partitions_i is a list of partitions of a DNN, N is the total number of DNNs
+        partitions_i is a list of partitions of a DNN, N is the total number of DNNs
     :param phases_per_layer_per_partition_per_dnn: list
-    [phases_per_partition_1, phases_per_partition_2, ..., phases_per_partition_N] where
-    phases_per_partition_j is a dictionary with key = dnn (partition) name, value = dictionary
-    with phases (values) per dnn layer (keys)
-    :return: buffers shared among dnns, where some of dnns are executed with pipeline parallelism
+        [phases_per_partition_1, phases_per_partition_2, ..., phases_per_partition_N] where
+        phases_per_partition_j is a dictionary with key = dnn (partition) name, value = dictionary
+        with phases (values) per dnn layer (keys)
+    :return: list of CSDF buffers, used by the application
     """
     buffers_per_dnn = []
 
@@ -140,7 +156,7 @@ def get_mms_buffers_multi_pipelined(partitions_per_dnn: [], phases_per_layer_per
         if len(partitions) == 1:
             single_partition = partitions[0]
             phases_per_layer = phases_per_layer_per_partition[single_partition.name]
-            dnn_buffers = get_mms_buffers(single_partition, phases_per_layer)
+            dnn_buffers = get_mms_buffers_no_pipeline(single_partition, phases_per_layer)
         # multi-partition dnn (executed as a pipeline)
         else:
             dnn_buffers = get_mms_buffers_pipelined(partitions, phases_per_layer_per_partition)
@@ -153,6 +169,9 @@ def get_mms_buffers_multi_pipelined(partitions_per_dnn: [], phases_per_layer_per
 
     return shared_buffers
 
+########################################
+# helper functions
+
 
 def annotate_with_sim_time(dnn):
     """
@@ -161,4 +180,18 @@ def annotate_with_sim_time(dnn):
     """
     for layer in dnn.get_layers():
         layer.time_eval = max(layer.phases, 1)
+
+
+def set_auto_buffer_names(csdf_buffers):
+    """
+    Set auto-names to CSDF buffers
+    :param csdf_buffers: CSDF buffers
+    """
+    buf_id = 0
+    for buf in csdf_buffers:
+        # rename buffer
+        buf.name = "B" + str(buf_id)
+        buf_id += 1
+
+
 

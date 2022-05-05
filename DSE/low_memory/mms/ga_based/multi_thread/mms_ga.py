@@ -14,11 +14,10 @@ def run_ga_parallel_multi(json_dnn_paths,
      pareto-front of MMS-GA chromosomes, delivered by MMS-GA will be saved
     :param verbose: print GA execution details into console
     """
-    from converters.json_converters.json_to_dnn import parse_json_dnn
+    from converters.json_converters.json_app_config_parser import parse_json_dnns,\
+        parse_json_mappings, partition_dnns_with_mapping
     from converters.json_converters.json_mms_ga_conf_parser import parse_mms_ga_conf
-    from converters.json_converters.json_mapping_parser import parse_mapping
     from converters.json_converters.mms_chromosomes_to_json import mms_chromosomes_to_json
-    from dnn_partitioning.after_mapping.partition_dnn_with_mapping import partition_dnn_with_mapping
     from models.dnn_model.transformation.external_ios_processor import external_ios_to_data_layers
     import traceback
     from util import print_to_stderr
@@ -26,21 +25,10 @@ def run_ga_parallel_multi(json_dnn_paths,
 
     stage = "DNNs parsing"
     try:
-        dnns = []
-        for json_dnn_path in json_dnn_paths:
-            dnn = parse_json_dnn(json_dnn_path)
-            dnns.append(dnn)
-        # dnn.print_details()
+        dnns = parse_json_dnns(json_dnn_paths)
 
         stage = "GA mappings parsing"
-        dnn_mappings = []
-        for json_mapping_path in json_mapping_paths:
-            if json_mapping_path is None:
-                dnn_mappings.append(None)
-            else:
-                mapping = parse_mapping(json_mapping_path)
-                dnn_mappings.append(mapping)
-                # print("mapping parsed: ", mapping)
+        dnn_mappings = parse_json_mappings(json_mapping_paths)
 
         stage = "GA config parsing"
         conf = parse_mms_ga_conf(json_ga_conf_path)
@@ -48,16 +36,7 @@ def run_ga_parallel_multi(json_dnn_paths,
 
         # partition dnns according to the parsed mappings
         stage = "DNNs partitioning"
-        partitions_per_dnn = []
-        for dnn_id in range(len(dnns)):
-            dnn = dnns[dnn_id]
-            mapping = dnn_mappings[dnn_id]
-            if mapping is None:
-                # no pipeline mapping
-                dnn_partitions = [dnn]
-            else:
-                dnn_partitions, inter_dnn_connections = partition_dnn_with_mapping(dnn, mapping)
-            partitions_per_dnn.append(dnn_partitions)
+        partitions_per_dnn = partition_dnns_with_mapping(dnns, dnn_mappings)
 
         stage = "Representing external dnn data sources/consumers as (data) layers"
         # represent all external I/Os as explicit (data) layers: important for building

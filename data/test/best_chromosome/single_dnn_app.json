@@ -1,0 +1,11 @@
+{
+    "layers_num": 4,
+    "dp_by_parts": [
+        true,
+        true,
+        true,
+        true
+    ],
+    "time_loss": 0.029,
+    "buf_size": 0.027008
+}

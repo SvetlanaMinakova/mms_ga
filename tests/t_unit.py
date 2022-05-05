@@ -171,16 +171,15 @@ def run_test_case_ga(app_config_path, test_config: {}, info_level, test_case_des
 
         script_root = get_project_root()
         script_name = "run_mms_ga"
-        abs_app_config_path = data_path_to_abs_data_path(app_config_path)
         input_param = {
-            "-c": abs_app_config_path,
+            "-c": app_config_path,
             "-t": str(test_config["cpu_threads"])
         }
         flags = []
         if info_level < 2:
             flags.append("--silent")
 
-        output_file_abs_paths = [data_path_to_abs_data_path(app_config["output_file_path"])]
+        output_file_abs_paths = [app_config["output_file_path"]]
 
         test_passed = run_script_and_check_output(script_root,
                                                   script_name,
@@ -189,27 +188,6 @@ def run_test_case_ga(app_config_path, test_config: {}, info_level, test_case_des
                                                   output_file_abs_paths,
                                                   info_level)
     return test_passed
-
-
-def data_path_to_abs_data_path(file_path):
-    """
-    Convert relative or absolute path to input data file
-     into absolute path to input data file
-    :param file_path: path to file
-    :return: absolute path to file
-    """
-    # import project modules
-    from util import get_project_root
-
-    relative_path_prefixes = ["./../", "./"]
-
-    for prefix in relative_path_prefixes:
-        if file_path.startswith(prefix):
-            file_path = file_path[len(prefix):]
-            file_path = str(os.path.join(get_project_root(), file_path))
-            return file_path
-
-    return file_path
 
 
 def try_parse_app_config(app_config_path, info_level):

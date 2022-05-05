@@ -1,6 +1,6 @@
 {
   "app_name": "multi_dnn_app",
-  "json_dnn_paths": ["./../data/json_dnn/CNN1.json", "./../data/json_dnn/CNN2.json"],
-  "json_ga_conf_path" : "./../data/test/test_mms_ga_conf.json",
-  "json_mapping_paths": ["", "./../data/test/pipeline_parallelism/single_dnn_pipeline.json"]
+  "json_dnn_paths": ["./data/json_dnn/CNN1.json", "./data/json_dnn/CNN2.json"],
+  "json_ga_conf_path" : "./data/test/test_mms_ga_conf.json",
+  "json_mapping_paths": ["", "./data/test/pipeline_parallelism/single_dnn_pipeline.json"]
 }

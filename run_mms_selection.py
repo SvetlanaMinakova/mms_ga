@@ -1,4 +1,5 @@
 import argparse
+import os.path
 from os.path import dirname
 import sys
 import traceback
@@ -30,6 +31,10 @@ def main():
     parser.add_argument('-pcb', metavar='--print-bottom-chromosomes', type=int, action='store', default=1,
                         help='Number of bottom (highest memory cost) chromosomes to print')
 
+    parser.add_argument('-o', metavar='--output', type=str, action='store',
+                        default="./output/best_chromosome/best_chromosome.json",
+                        help='Path to the output .json file to save the best chromosome in.')
+
     # general flags
     parser.add_argument("--silent", help="do not provide print-out for the script steps",
                         action="store_true", default=False)
@@ -45,6 +50,7 @@ def main():
     # import sub-modules
     from util import print_stage
     from fileworkers.json_fw import read_json
+    from fileworkers.json_fw import save_as_json
     from mms_selection import filter_chromosomes, select_chromosome_with_min_time_loss, \
         select_chromosome_with_min_buf_size
 
@@ -55,6 +61,7 @@ def main():
         time_loss = args.tl
         print_top_chromosomes = args.pct
         print_bottom_chromosomes = args.pcb
+        output_file_path = args.o
         silent = args.silent
         verbose = not silent
 
@@ -89,7 +96,12 @@ def main():
             best_chromosome = select_chromosome_with_min_buf_size(json_chromosomes)
 
         if verbose:
+            print("")
             print("best chromosome:", best_chromosome)
+
+        stage = "Save best chromosome in .json file " + output_file_path
+        print_stage(stage, verbose)
+        save_as_json(output_file_path, best_chromosome)
 
     except Exception as e:
         print("GA-based search error: " + str(e))
