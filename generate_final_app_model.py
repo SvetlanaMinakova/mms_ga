@@ -4,6 +4,7 @@ from models.dnn_model.transformation.external_ios_processor import external_ios_
 import traceback
 from util import print_stage
 from models.app_model.MMSFinalAppModel import MMSFinalAppModel
+from DSE.low_memory.mms.buf_building import get_mms_buffers
 
 
 def build_final_app(app_config_path: str, best_chromosome_path: str, verbose=True):

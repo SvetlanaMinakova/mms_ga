@@ -3,8 +3,9 @@ from converters.dnn_to_task_graph import dnn_to_task_graph
 from dnn_partitioning.after_mapping.partition_dnn_with_mapping import partition_dnn_with_task_graph_and_mapping
 from DSE.low_memory.mms.ga_based.MMSChromosome import MMSChromosome
 from DSE.low_memory.mms.buf_building import get_mms_buffers_multi_pipelined
-from DSE.low_memory.mms.ga_based.multi_thread.MMSgaParallelMultiPipeline import get_phases_per_layer_per_partition_per_dnn,\
-    get_max_phases_per_layer_per_partition_per_dnn, MMSgaParallelMultiPipeline
+from DSE.low_memory.mms.ga_based.multi_thread.MMSgaParallelMultiPipeline import MMSgaParallelMultiPipeline
+from DSE.low_memory.mms.phases_derivation import get_max_phases_per_layer_per_partition_per_dnn, \
+    get_phases_per_layer_per_partition_per_dnn
 from models.dnn_model.transformation.external_ios_processor import external_ios_to_data_layers
 from converters.json_converters.mms_chromosomes_to_json import mms_chromosomes_to_json
 from util import get_project_root
@@ -124,7 +125,7 @@ def example_app_with_manual_chromosome():
 
     # max phases
     max_phases = get_max_phases_per_layer_per_partition_per_dnn(partitions_per_dnn)
-    phases = get_phases_per_layer_per_partition_per_dnn(partitions_per_dnn, chromosome, max_phases)
+    phases = get_phases_per_layer_per_partition_per_dnn(partitions_per_dnn, chromosome.dp_by_parts, max_phases)
 
     print("Phases")
 

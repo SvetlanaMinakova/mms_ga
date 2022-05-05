@@ -29,7 +29,7 @@ def annotate_layers_with_phases(dnn: DNN, phases_per_layer: {}):
 def get_max_phases_per_layer(dnn: DNN) -> {}:
     """
     Compute maximum number of phases, performed by the layers of a dnn
-    :param dnn dnn
+    :param dnn: dnn
     :return: maximum number of phases, performed by the layers of the dnn
     """
     phases_per_layer = {}
