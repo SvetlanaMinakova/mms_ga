@@ -34,16 +34,15 @@ def get_max_phases_per_layer(dnn: DNN) -> {}:
     """
     phases_per_layer = {}
     for layer in dnn.get_layers():
-        max_phases = get_max_phases(dnn, layer)
+        max_phases = get_max_phases(layer)
         phases_per_layer[layer.name] = max_phases
 
     return phases_per_layer
 
 
-def get_max_phases(dnn: DNN, layer: Layer):
+def get_max_phases(layer: Layer):
     """
     Compute maximum number of phases, performed by the layer
-    :param dnn: DNN that owns the layer
     :param layer CNN layer
     :return: maximum number of phases, performed by the layer
     """

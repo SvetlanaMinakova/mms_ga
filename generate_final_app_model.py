@@ -3,8 +3,14 @@ from converters.json_converters.json_app_config_parser import parse_app_conf, pa
 from models.dnn_model.transformation.external_ios_processor import external_ios_to_data_layers
 import traceback
 from util import print_stage
-from models.app_model.MMSFinalAppModel import MMSFinalAppModel
-from DSE.low_memory.mms.buf_building import get_mms_buffers
+from models.app_model.MMSDNNInferenceModel import MMSDNNInferenceModel
+from DSE.low_memory.mms.buf_building import get_mms_buffers_and_schedule
+from DSE.low_memory.mms.phases_derivation import dp_encoding_to_phases_num
+from fileworkers.json_fw import read_json
+from converters.data_buffers_converter import csdf_reuse_buf_to_generic_dnn_buf
+from DSE.scheduling.dnn_scheduling import DNNScheduling
+from simulation.csdf_simulation import simulate_execution_asap
+from converters.dnn_to_csdf import dnn_to_csfd_one_to_one
 
 
 def build_final_app(app_config_path: str, best_chromosome_path: str, verbose=True):
@@ -34,10 +40,39 @@ def build_final_app(app_config_path: str, best_chromosome_path: str, verbose=Tru
             for partition in partitions:
                 external_ios_to_data_layers(partition)
 
+        stage = "Reading best chromosome"
+        print_stage(stage, verbose)
+        json_best_chromosome = read_json(best_chromosome_path)
+        dp_encoding = json_best_chromosome["dp_by_parts"]
+        # print("dp_encoding:", dp_encoding)
+
+        stage = "Obtaining phases per dnn layer"
+        print_stage(stage, verbose)
+        phases = dp_encoding_to_phases_num(dp_encoding, dnns)
+
+        stage = "Converting DNNs into CSDF models for analysis"
+        print_stage(stage, verbose)
+        csdfs = [dnn_to_csfd_one_to_one(dnn, fuse_self_loops=True) for dnn in dnns]
+
+        stage = "Building buffers using CSDF model analysis"
+        print_stage(stage, verbose)
+        csdf_buffers = get_mms_buffers_and_schedule(dnns, partitions_per_dnn, dp_encoding, verbose=False)
+
+        stage = "Creating DNN buffers description"
+        print_stage(stage, verbose)
+        generic_dnn_buffers = csdf_reuse_buf_to_generic_dnn_buf(csdf_buffers, dnns)
+        # for buf in generic_dnn_buffers:
+        #    buf.print_details()
+
+        stage = "Obtaining DNN  schedules (layers execution order)"
+        print_stage(stage, verbose)
+
         stage = "Creating final model"
-        app_model = MMSFinalAppModel(conf["app_name"])
-        app_model.dnns = dnns
+        app_model = MMSDNNInferenceModel(conf["app_name"])
+        app_model.dnn_names = [dnn.name for dnn in dnns]
         app_model.partitions_per_dnn = partitions_per_dnn
+        app_model.phases_per_dnn_per_layer = phases
+        # app_model.print_details()
 
     except Exception as e:
         print("Final app generation error at stage " + stage)
@@ -45,8 +80,13 @@ def build_final_app(app_config_path: str, best_chromosome_path: str, verbose=Tru
 
 
 def tst():
+    app_config_path = "./data/test/app_configs/multi_dnn.json"
+    best_chromosome_path = "./data/test/best_chromosome/multi_dnn_app.json"
+    """
     app_config_path = "./data/test/app_configs/single_dnn.json"
     best_chromosome_path = "./data/test/best_chromosome/single_dnn_app.json"
+    """
+
     build_final_app(app_config_path, best_chromosome_path)
 
 tst()

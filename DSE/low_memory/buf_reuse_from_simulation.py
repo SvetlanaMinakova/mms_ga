@@ -3,12 +3,14 @@ from models.data_buffers import DataBuffer, CSDFGDataBuffer
 
 #######################################
 # reuse buffers among multiple CSDF graphs
-# (NO pipeline)
-# TODO: make it pipeline-aware
-def reuse_buffers_among_csdf(csdf_buffers_per_csdf):
+
+
+def reuse_buffers_among_csdf(csdf_buffers_per_csdf: [CSDFGDataBuffer],
+                             csdf_model_names: [str]):
     """
     Reuse buffers among multiple CSDF models
     :param csdf_buffers_per_csdf: csdf buffers per CSDF model
+    :param csdf_model_names: names of CSDF models
     :return: buffers reused among all the CSDF models
     """
     # Will be needed for pipeline?
@@ -71,6 +73,9 @@ def reuse_buffers_among_csdf(csdf_buffers_per_csdf):
             # reuse buffer to store channels
             for ch in buffer.channels:
                 shared_csdf_buffer.channels.append(ch)
+                ch_csdf_model_id = channel_to_csdf_model_id[ch]
+                ch_csdf_model_name = csdf_model_names[ch_csdf_model_id]
+                shared_csdf_buffer.csdf_model_name_per_channel.append(ch_csdf_model_name)
             # update buffer size
             shared_csdf_buffer.size = max(shared_csdf_buffer.size, buffer.size)
 
@@ -331,6 +336,7 @@ def build_reuse_buffers_from_sim_trace(sim_trace: SimTrace):
 
     return buffers
 """
+
 
 def get_memory_access_times(trace: SimTrace):
     """

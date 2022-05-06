@@ -1,4 +1,4 @@
-from DSE.low_memory.dp_by_parts import get_max_phases_per_layer
+from DSE.low_memory.dp_by_parts import get_max_phases_per_layer, get_max_phases
 from models.dnn_model.dnn import DNN
 
 """
@@ -160,8 +160,8 @@ def get_phases_per_layer_per_partition_per_dnn(partitions_per_dnn: [],
     """
     Determine maximum number of phases performed by every DNN layer
     :param partitions_per_dnn: list of pipelined partitions per dnn
-    :param dp_encoding: ata processing by parts, encoded in a binary string
-        (see explanation at the beginning of the script
+    :param dp_encoding: data processing by parts, encoded in a binary string
+        (see explanation at the beginning of the script)
     :param max_phases_per_layer_per_partition_per_dnn: maximum number of phases per partition per DNN
         if unspecified (is None), is computed automatically
     """
@@ -189,4 +189,25 @@ def get_phases_per_layer_per_partition_per_dnn(partitions_per_dnn: [],
         phases_per_layer_per_partition_per_dnn.append(ph_per_dnn)
 
     return phases_per_layer_per_partition_per_dnn
+
+
+def dp_encoding_to_phases_num(dp_encoding: [bool], dnns: [DNN]):
+    """
+    Convert dp encoding into the number of phases, performed by ever DNN layer
+    :param dp_encoding: data processing by parts, encoded in a binary string
+        (see explanation at the beginning of the script)
+    :param dnns: dnns for which dp encoding was created
+    :return: a string of the same len as dp encoding, where every element (int) =
+        number of phases, performed by a DNN layer
+    """
+    phases = []
+    layer_id_in_encoding = 0
+    for dnn in dnns:
+        for layer in dnn.get_layers():
+            max_layer_phases = get_max_phases(layer)
+            dp = dp_encoding[layer_id_in_encoding]
+            layer_phases = max_layer_phases if dp else 1
+            phases.append(layer_phases)
+            layer_id_in_encoding += 1
+    return phases
 

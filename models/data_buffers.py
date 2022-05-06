@@ -11,6 +11,8 @@ class DataBuffer:
         self.name = name
         self.size = size
         self.users = []
+        self.type = "none"
+        self.subtype = "none"
 
     def assign(self, user):
         self.users.append(user)
@@ -32,16 +34,23 @@ class CSDFGDataBuffer(DataBuffer):
         super(CSDFGDataBuffer, self).__init__(name, size)
         # FIFO channels, using the CSDFG buffer
         self.channels = []
+        # for FIFO channels reused among multiple CSDF models
+        self.csdf_model_name_per_channel = []
 
     def __str__(self):
         return "{name: " + self.name + ", size: " + str(self.size) + ", channels num: " + str(len(self.channels)) + "}"
 
-    def print_details(self, print_users=True):
+    def print_details(self, print_users=True, print_csdf_model_names=True):
         print(self)
         if print_users:
             print("channels: ")
+            channel_id = 0
             for channel in self.channels:
-                print(" ", channel)
+                str_channel = str(channel)
+                if print_csdf_model_names and len(self.channels) == len(self.csdf_model_name_per_channel):
+                    str_channel += ", model: " + self.csdf_model_name_per_channel[channel_id]
+                print(" ", str_channel)
+                channel_id += 1
 
 
 def build_naive_csdfg_buffers(csdfg: CSDFGraph):

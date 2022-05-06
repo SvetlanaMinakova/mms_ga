@@ -17,7 +17,7 @@ and among (buffers reuse) different layers of DNN(s), used by a DNN-based applic
 # Interface
 
 
-def get_mms_buffers(dnns: [], partitions_per_dnn: [], dp_encoding: [], verbose=False):
+def get_mms_buffers_and_schedule(dnns: [], partitions_per_dnn: [], dp_encoding: [], verbose=False):
     """
     Get MMS buffers for a DNN-based application, using a one or multiple of DNNs,
         where every DNN is possibly executed as a set of pipelined partitions
@@ -219,7 +219,7 @@ def get_mms_buffers_multi(dnns, phases_per_layer_per_dnn: {}):
         buffers_per_dnn.append(csdf_buffers)
 
     # reuse buffers among dnn (csdf)
-    shared_buffers = reuse_buffers_among_csdf(buffers_per_dnn)
+    shared_buffers = reuse_buffers_among_csdf(buffers_per_dnn, [dnn.name for dnn in dnns])
     set_auto_buffer_names(shared_buffers)
     return shared_buffers
 
@@ -238,6 +238,7 @@ def get_mms_buffers_multi_pipelined(partitions_per_dnn: [],
         [phases_per_partition_1, phases_per_partition_2, ..., phases_per_partition_N] where
         phases_per_partition_j is a dictionary with key = dnn (partition) name, value = dictionary
         with phases (values) per dnn layer (keys)
+    :param dnn_names
     :return: list of CSDF buffers, used by the application
     """
     buffers_per_dnn = []
@@ -258,7 +259,7 @@ def get_mms_buffers_multi_pipelined(partitions_per_dnn: [],
         buffers_per_dnn.append(dnn_buffers)
 
     # reuse buffers among dnns (csdf)
-    shared_buffers = reuse_buffers_among_csdf(buffers_per_dnn)
+    shared_buffers = reuse_buffers_among_csdf(buffers_per_dnn, ["dnn" + str(dnn_id) for dnn_id in range(len(partitions_per_dnn))])
     set_auto_buffer_names(shared_buffers)
 
     return shared_buffers

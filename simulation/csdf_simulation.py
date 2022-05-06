@@ -13,7 +13,7 @@ def simulate_execution_asap(csdfg:CSDFGraph,
     Simulate execution of CSDF model where every actor is executed as soon as possible
     :param csdfg: CSDFGraph for simulation
     :param csdfg_buffers: list of CSDF graph buffers, used to store
-    data, exchanged though the CSDF graph channels.
+        data, exchanged though the CSDF graph channels.
     :param max_samples: maximum number of input_examples samples (e.g. input_examples images) to process
     :param proc_num: number of processors to simulate execution on
     :param trace_memory_access (flag) If True, memory access will be added to the trace

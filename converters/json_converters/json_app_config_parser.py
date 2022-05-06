@@ -4,7 +4,7 @@ from util import get_project_root
 import os
 from converters.json_converters.json_to_dnn import parse_json_dnn
 from converters.json_converters.json_mapping_parser import parse_mapping
-from dnn_partitioning.after_mapping.partition_dnn_with_mapping import partition_dnn_with_mapping
+from DSE.partitioning.after_mapping.partition_dnn_with_mapping import partition_dnn_with_mapping
 from models.dnn_model.dnn import DNN
 
 
