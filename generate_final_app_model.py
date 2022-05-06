@@ -44,28 +44,31 @@ def build_final_app(app_config_path: str, best_chromosome_path: str, verbose=Tru
         print_stage(stage, verbose)
         json_best_chromosome = read_json(best_chromosome_path)
         dp_encoding = json_best_chromosome["dp_by_parts"]
-        # print("dp_encoding:", dp_encoding)
+        print("dp_encoding:", dp_encoding)
 
         stage = "Obtaining phases per dnn layer"
         print_stage(stage, verbose)
         phases = dp_encoding_to_phases_num(dp_encoding, dnns)
+        print("phases per layer:", phases)
 
-        stage = "Converting DNNs into CSDF models for analysis"
+        stage = "Building DNN buffers and schedules through CNN-to-CSDF conversion and CSDF model analysis"
         print_stage(stage, verbose)
-        csdfs = [dnn_to_csfd_one_to_one(dnn, fuse_self_loops=True) for dnn in dnns]
-
-        stage = "Building buffers using CSDF model analysis"
+        csdf_buffers, csdf_schedule = get_mms_buffers_and_schedule(dnns,
+                                                                   partitions_per_dnn,
+                                                                   dp_encoding,
+                                                                   generate_schedule=True,
+                                                                   verbose=False)
+        stage = "DNN  schedules (layers execution order)"
         print_stage(stage, verbose)
-        csdf_buffers, csdf_schedule = get_mms_buffers_and_schedule(dnns, partitions_per_dnn, dp_encoding, verbose=False)
+        if csdf_schedule is not None:
+            for elem in csdf_schedule:
+                print(elem)
 
         stage = "Creating DNN buffers description"
         print_stage(stage, verbose)
         generic_dnn_buffers = csdf_reuse_buf_to_generic_dnn_buf(csdf_buffers, dnns)
         # for buf in generic_dnn_buffers:
         #    buf.print_details()
-
-        stage = "Obtaining DNN  schedules (layers execution order)"
-        print_stage(stage, verbose)
 
         stage = "Creating final model"
         app_model = MMSDNNInferenceModel(conf["app_name"])
@@ -80,12 +83,15 @@ def build_final_app(app_config_path: str, best_chromosome_path: str, verbose=Tru
 
 
 def tst():
+    # multi-dnn app (no pipeline)
+    """
     app_config_path = "./data/test/app_configs/multi_dnn.json"
     best_chromosome_path = "./data/test/best_chromosome/multi_dnn_app.json"
     """
+
+    # single-dnn app (no pipeline)
     app_config_path = "./data/test/app_configs/single_dnn.json"
     best_chromosome_path = "./data/test/best_chromosome/single_dnn_app.json"
-    """
 
     build_final_app(app_config_path, best_chromosome_path)
 

@@ -30,7 +30,7 @@ def get_phases_per_layer(dnn: DNN, dp_encoding: [bool], max_phases_per_layer=Non
     for layer in dnn.get_layers():
         max_layer_phases = max_phases[layer.name]
         layer_phases = decode_layer_phases(max_layer_phases, layer_id_in_encoding, dp_encoding)
-        max_phases[layer.name] = layer_phases
+        phases_per_layer[layer.name] = layer_phases
         layer_id_in_encoding += 1
 
     return phases_per_layer

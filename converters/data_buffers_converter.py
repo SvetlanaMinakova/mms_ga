@@ -1,6 +1,7 @@
 from models.data_buffers import DataBuffer, DNNDataBuffer, CSDFGDataBuffer
 from models.dnn_model.dnn import DNN
 import traceback
+from util import print_to_stderr
 
 """
 Transforms buffer of one type into buffer of another type
@@ -70,7 +71,8 @@ def generic_csdf_buf_to_generic_dnn_buf(generic_csdf_buffer: DataBuffer, dnns: [
         dnn_name, src_actor_name, dst_actor_name = csdf_buf_user
         dnn = get_dnn_by_name(dnns, dnn_name)
         if dnn is None:
-            raise Exception(error_prefix + "dnn model " + dnn_name + " not found!")
+            print_to_stderr(error_prefix + "dnn model " + dnn_name + " not found!")
+            raise Exception("CSDF-to-DNN (generic) buffers conversion error")
         src_layer_name = actor_name_to_layer_name(dnn, src_actor_name)
         if src_layer_name is None:
             raise Exception(error_prefix + "null src actor name!")

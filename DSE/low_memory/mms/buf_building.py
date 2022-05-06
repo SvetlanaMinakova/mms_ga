@@ -55,14 +55,15 @@ def get_mms_buffers_and_schedule(dnns: [], partitions_per_dnn: [], dp_encoding: 
         if not is_pipelined:
             single_dnn = dnns[0]
             phases = get_phases_per_layer(single_dnn, dp_encoding)
-            buffers, schedule = get_mms_buffers_no_pipeline(single_dnn, phases)
+            print("phases per layer (internal): ", phases)
+            buffers, schedule = get_mms_buffers_no_pipeline(single_dnn, phases, generate_schedule)
             return buffers, schedule
 
         # pipeline parallelism is exploited
         else:
             single_dnn_partitions = partitions_per_dnn[0]
             phases = get_phases_per_layer_per_partition(single_dnn_partitions, dp_encoding)
-            buffers, schedule = get_mms_buffers_no_pipeline(single_dnn_partitions, phases)
+            buffers, schedule = get_mms_buffers_pipelined(single_dnn_partitions, phases, dnns[0].name, generate_schedule)
             return buffers, schedule
 
     # multi-dnn applications
@@ -70,12 +71,15 @@ def get_mms_buffers_and_schedule(dnns: [], partitions_per_dnn: [], dp_encoding: 
         # no pipeline parallelism is exploited
         if not is_pipelined:
             phases = get_phases_per_layer_per_dnn(dnns, dp_encoding)
-            buffers, schedule = get_mms_buffers_multi(dnns, phases)
+            buffers, schedule = get_mms_buffers_multi(dnns, phases, generate_schedule)
             return buffers, schedule
         # pipeline parallelism is exploited
         else:
             phases = get_phases_per_layer_per_partition_per_dnn(partitions_per_dnn, dp_encoding)
-            buffers, schedule = get_mms_buffers_multi_pipelined(partitions_per_dnn, phases, [dnn.name for dnn in dnns])
+            buffers, schedule = get_mms_buffers_multi_pipelined(partitions_per_dnn,
+                                                                phases,
+                                                                [dnn.name for dnn in dnns],
+                                                                generate_schedule)
             return buffers, schedule
 
 
@@ -146,17 +150,24 @@ def get_mms_buffers_no_pipeline(dnn, phases_per_layer: {}, generate_schedule=Fal
     sim_trace.sort_tasks_by_start_time()
     minimize_csdfg_buf_sizes(sim_trace, csdf_buffers)
     reuse_dp_csdf_buffers = build_csdfg_reuse_buffers_from_sim_trace(sim_trace, csdf_buffers)
+    associate_buffers_with_csdf_model(reuse_dp_csdf_buffers, dnn.name)
 
     reset_phases(dnn)
 
-    schedule = None
+    # CSDF model schedule (execution order of actors within CSDF model)
+    schedule = sim_trace.get_asap_schedule() if generate_schedule else None
+
     return reuse_dp_csdf_buffers, schedule
+
 
 ######################################
 # single dnn with pipeline parallelism
 
 
-def get_mms_buffers_pipelined(dnn_partitions, phases_per_layer_per_partition: {}, generate_schedule=False):
+def get_mms_buffers_pipelined(dnn_partitions,
+                              phases_per_layer_per_partition: {},
+                              dnn_name: str,
+                              generate_schedule=False):
     """
     Get buffers with data processing by parts and buffers reuse for a single-DNN application
     where memory reused within and among dnns and no pipeline parallelism is exploited
@@ -166,6 +177,7 @@ def get_mms_buffers_pipelined(dnn_partitions, phases_per_layer_per_partition: {}
         dnn_phases_i, i in [1, N] is a dictionary with phases of i-th DNN partition,
         where key (str) = name of layer in i-th DNN partition,
         value (int) = number of phases, performed by the layer in i-th DNN partition
+    :param dnn_name: name of the DNN
     :param generate_schedule: (flag) if yes, actual per-partition-per dnn schedule is generated. Otherwise,
         null-schedule is returned
     :return: list of CSDF buffers, used by the application, and schedule,
@@ -202,6 +214,8 @@ def get_mms_buffers_pipelined(dnn_partitions, phases_per_layer_per_partition: {}
             # rename buffers to give them unique names
             buf.name = "B" + str(len(dp_reuse_buffers))
             dp_reuse_buffers.append(buf)
+
+    associate_buffers_with_csdf_model(dp_reuse_buffers, dnn_name)
 
     # reset number of phases per partition
     for partition in dnn_partitions:
@@ -273,10 +287,15 @@ def get_mms_buffers_multi_pipelined(partitions_per_dnn: [],
         if len(partitions) == 1:
             single_partition = partitions[0]
             phases_per_layer = phases_per_layer_per_partition[single_partition.name]
-            dnn_buffers, dnn_schedule = get_mms_buffers_no_pipeline(single_partition, phases_per_layer)
+            dnn_buffers, dnn_schedule = get_mms_buffers_no_pipeline(single_partition,
+                                                                    phases_per_layer,
+                                                                    generate_schedule)
         # multi-partition dnn (executed as a pipeline)
         else:
-            dnn_buffers, dnn_schedule = get_mms_buffers_pipelined(partitions, phases_per_layer_per_partition)
+            dnn_buffers, dnn_schedule = get_mms_buffers_pipelined(partitions,
+                                                                  phases_per_layer_per_partition,
+                                                                  dnn_names[dnn_id],
+                                                                  generate_schedule)
 
         buffers_per_dnn.append(dnn_buffers)
 
@@ -311,5 +330,16 @@ def set_auto_buffer_names(csdf_buffers):
         buf.name = "B" + str(buf_id)
         buf_id += 1
 
+
+def associate_buffers_with_csdf_model(csdf_buffers: [], csdf_model_name):
+    """
+    Associate all channels of every CSDF buffer in the input CSDF buffers list with a specific CSDF model
+    :param csdf_buffers:  CSDF buffers
+    :param csdf_model_name: name of the CSDF model
+    """
+    for csdf_buffer in csdf_buffers:
+        csdf_buffer.csdf_model_name_per_channel = []
+        for channel in csdf_buffer.channels:
+            csdf_buffer.csdf_model_name_per_channel.append(csdf_model_name)
 
 
