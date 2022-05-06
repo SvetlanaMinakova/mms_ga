@@ -129,7 +129,7 @@ def example_app_with_manual_chromosome():
 
     print("Phases")
 
-    buffers, schedule = get_mms_buffers_multi_pipelined(partitions_per_dnn, phases)
+    buffers, schedule = get_mms_buffers_multi_pipelined(partitions_per_dnn, phases, [cnn1.name, cnn2.name])
     for buffer in buffers:
         buffer.print_details()
         print()

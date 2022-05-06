@@ -62,6 +62,7 @@ def eval_dnn_buffers_size_mb(dnn: DNN, phases_per_layer, data_token_size=4):
 
 def eval_dnn_buffers_size_multi_pipelined_mb(partitions_per_dnn: [],
                                              phases_per_layer_per_partition_per_dnn: [],
+                                             dnn_names: [str],
                                              data_token_size=4):
     """
     Eval DNN memory in megabytes with max-mem-save (DP + reuse) memory reduction: the smaller, the better
@@ -71,12 +72,15 @@ def eval_dnn_buffers_size_multi_pipelined_mb(partitions_per_dnn: [],
     [phases_per_partition_1, phases_per_partition_2, ..., phases_per_partition_N] where
     phases_per_partition_j is a dictionary with key = dnn (partition) name, value = dictionary
     with phases (values) per dnn layer (keys)
+    :param dnn_names: name per dnn
     :param data_token_size: size of one data token (in Bytes)
     :return: size of DNN buffers (in MB)
     """
 
     # build buffers
-    mms_csdf_buffers = get_mms_buffers_multi_pipelined(partitions_per_dnn, phases_per_layer_per_partition_per_dnn)
+    mms_csdf_buffers, mms_csdf_schedule = get_mms_buffers_multi_pipelined(partitions_per_dnn,
+                                                                          phases_per_layer_per_partition_per_dnn,
+                                                                          dnn_names)
 
     # eval buffers size
     buf_size = eval_csdf_buffers_memory_mb(mms_csdf_buffers, data_token_size)

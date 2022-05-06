@@ -17,7 +17,7 @@ and among (buffers reuse) different layers of DNN(s), used by a DNN-based applic
 # Interface
 
 
-def get_mms_buffers_and_schedule(dnns: [], partitions_per_dnn: [], dp_encoding: [], verbose=False):
+def get_mms_buffers_and_schedule(dnns: [], partitions_per_dnn: [], dp_encoding: [], generate_schedule=False, verbose=False):
     """
     Get MMS buffers for a DNN-based application, using a one or multiple of DNNs,
         where every DNN is possibly executed as a set of pipelined partitions
@@ -30,8 +30,11 @@ def get_mms_buffers_and_schedule(dnns: [], partitions_per_dnn: [], dp_encoding: 
         in a DNN-based application. Layers are indexed in execution order (from input layer to output layer).
         If an application uses multiple DNNs, layers of the DNNs are concatenated in the order, in which DNNs are mentioned
         in the application (in the input dnns list)
+    :param generate_schedule: (flag) if yes, actual per-partition-per dnn schedule is generated. Otherwise,
+        null-schedule is returned
     :param verbose: print details of buffers generation
-    :return: list of MMS (data processing by parts + buffers reuse) CSDF buffers, used by the application
+    :return: list of MMS (data processing by parts + buffers reuse) CSDF buffers, used by the application,
+        and schedule, required for the application to be executed with proposed buffers
     """
     if len(dnns) == 0:
         raise Exception("MMS buffers derivation error: empty dnns list!")
@@ -52,28 +55,28 @@ def get_mms_buffers_and_schedule(dnns: [], partitions_per_dnn: [], dp_encoding: 
         if not is_pipelined:
             single_dnn = dnns[0]
             phases = get_phases_per_layer(single_dnn, dp_encoding)
-            buffers = get_mms_buffers_no_pipeline(single_dnn, phases)
-            return buffers
+            buffers, schedule = get_mms_buffers_no_pipeline(single_dnn, phases)
+            return buffers, schedule
 
         # pipeline parallelism is exploited
         else:
             single_dnn_partitions = partitions_per_dnn[0]
             phases = get_phases_per_layer_per_partition(single_dnn_partitions, dp_encoding)
-            buffers = get_mms_buffers_no_pipeline(single_dnn_partitions, phases)
-            return buffers
+            buffers, schedule = get_mms_buffers_no_pipeline(single_dnn_partitions, phases)
+            return buffers, schedule
 
     # multi-dnn applications
     else:
         # no pipeline parallelism is exploited
         if not is_pipelined:
             phases = get_phases_per_layer_per_dnn(dnns, dp_encoding)
-            buffers = get_mms_buffers_multi(dnns, phases)
-            return buffers
+            buffers, schedule = get_mms_buffers_multi(dnns, phases)
+            return buffers, schedule
         # pipeline parallelism is exploited
         else:
             phases = get_phases_per_layer_per_partition_per_dnn(partitions_per_dnn, dp_encoding)
-            buffers = get_mms_buffers_multi_pipelined(partitions_per_dnn, phases)
-            return buffers
+            buffers, schedule = get_mms_buffers_multi_pipelined(partitions_per_dnn, phases, [dnn.name for dnn in dnns])
+            return buffers, schedule
 
 
 def are_null_or_empty_partitions(partitions_per_dnn: []):
@@ -115,14 +118,17 @@ def are_single_dnn_partitions(partitions_per_dnn: []):
 # single dnn with no pipeline parallelism
 
 
-def get_mms_buffers_no_pipeline(dnn, phases_per_layer: {}):
+def get_mms_buffers_no_pipeline(dnn, phases_per_layer: {}, generate_schedule=False):
     """
     Get buffers with data processing by parts and buffers reuse for a single-DNN application
     where memory reused within and among dnns and no pipeline parallelism is exploited
     :param dnn: single DNN, used by the application
     :param phases_per_layer:  dictionary with phases of the DNN, where key (str) = name of a DNN layer,
         value (int) = number of phases, performed by the layer
-    :return: list of CSDF buffers, used by the application
+    :param generate_schedule: (flag) if yes, actual per-partition-per dnn schedule is generated. Otherwise,
+        null-schedule is returned
+    :return: list of CSDF buffers, used by the application, and schedule,
+        required for the application to be executed with proposed buffers
     """
     annotate_layers_with_phases(dnn, phases_per_layer)
     annotate_with_sim_time(dnn)
@@ -142,13 +148,15 @@ def get_mms_buffers_no_pipeline(dnn, phases_per_layer: {}):
     reuse_dp_csdf_buffers = build_csdfg_reuse_buffers_from_sim_trace(sim_trace, csdf_buffers)
 
     reset_phases(dnn)
-    return reuse_dp_csdf_buffers
+
+    schedule = None
+    return reuse_dp_csdf_buffers, schedule
 
 ######################################
 # single dnn with pipeline parallelism
 
 
-def get_mms_buffers_pipelined(dnn_partitions, phases_per_layer_per_partition: {}):
+def get_mms_buffers_pipelined(dnn_partitions, phases_per_layer_per_partition: {}, generate_schedule=False):
     """
     Get buffers with data processing by parts and buffers reuse for a single-DNN application
     where memory reused within and among dnns and no pipeline parallelism is exploited
@@ -158,7 +166,10 @@ def get_mms_buffers_pipelined(dnn_partitions, phases_per_layer_per_partition: {}
         dnn_phases_i, i in [1, N] is a dictionary with phases of i-th DNN partition,
         where key (str) = name of layer in i-th DNN partition,
         value (int) = number of phases, performed by the layer in i-th DNN partition
-    :return: list of CSDF buffers, used by the application
+    :param generate_schedule: (flag) if yes, actual per-partition-per dnn schedule is generated. Otherwise,
+        null-schedule is returned
+    :return: list of CSDF buffers, used by the application, and schedule,
+        required for the application to be executed with proposed buffers
     """
     # create buffers within partitions
     csdf_buffers_per_partition = []
@@ -196,13 +207,14 @@ def get_mms_buffers_pipelined(dnn_partitions, phases_per_layer_per_partition: {}
     for partition in dnn_partitions:
         reset_phases(partition)
 
-    return dp_reuse_buffers
+    schedule = None
+    return dp_reuse_buffers, schedule
 
 
 ########################################
 # multi-dnn with no pipeline parallelism
 
-def get_mms_buffers_multi(dnns, phases_per_layer_per_dnn: {}):
+def get_mms_buffers_multi(dnns, phases_per_layer_per_dnn: {}, generate_schedule=False):
     """
     Get buffers with data processing by parts and buffers reuse for a multi-CNN application
     where memory reused within and among dnns and no pipeline parallelism is exploited
@@ -210,25 +222,32 @@ def get_mms_buffers_multi(dnns, phases_per_layer_per_dnn: {}):
     :param phases_per_layer_per_dnn: dictionary, where key = i-th DNN name, value =
         dictionary with phases of i-th DNN, where key (str) = name of layer in i-th DNN,
         value (int) = number of phases, performed by the layer
-    :return: list of CSDF buffers, used by the application
+    :param generate_schedule: (flag) if yes, actual per-partition-per dnn schedule is generated. Otherwise,
+        null-schedule is returned
+    :return: list of CSDF buffers, used by the application, and schedule,
+        required for the application to be executed with proposed buffers
     """
     buffers_per_dnn = []
 
     for dnn in dnns:
-        csdf_buffers = get_mms_buffers_no_pipeline(dnn, phases_per_layer_per_dnn[dnn.name])
+        csdf_buffers, csdf_schedule = get_mms_buffers_no_pipeline(dnn, phases_per_layer_per_dnn[dnn.name])
         buffers_per_dnn.append(csdf_buffers)
 
     # reuse buffers among dnn (csdf)
     shared_buffers = reuse_buffers_among_csdf(buffers_per_dnn, [dnn.name for dnn in dnns])
     set_auto_buffer_names(shared_buffers)
-    return shared_buffers
+
+    schedule = None
+    return shared_buffers, schedule
 
 
 ########################################
 # multi-dnn with no pipeline parallelism
 
 def get_mms_buffers_multi_pipelined(partitions_per_dnn: [],
-                                    phases_per_layer_per_partition_per_dnn: []):
+                                    phases_per_layer_per_partition_per_dnn: [],
+                                    dnn_names: [str],
+                                    generate_schedule=False):
     """
     Get buffers with data processing by parts and buffers reuse for a multi-CNN application
         where memory reused within and among dnns and pipeline parallelism is exploited
@@ -238,8 +257,11 @@ def get_mms_buffers_multi_pipelined(partitions_per_dnn: [],
         [phases_per_partition_1, phases_per_partition_2, ..., phases_per_partition_N] where
         phases_per_partition_j is a dictionary with key = dnn (partition) name, value = dictionary
         with phases (values) per dnn layer (keys)
-    :param dnn_names
-    :return: list of CSDF buffers, used by the application
+    :param dnn_names: list of DNN names for DNN partitions
+        :param generate_schedule: (flag) if yes, actual per-partition-per dnn schedule is generated. Otherwise,
+        null-schedule is returned
+    :return: list of CSDF buffers, used by the application, and schedule,
+        required for the application to be executed with proposed buffers
     """
     buffers_per_dnn = []
 
@@ -251,18 +273,19 @@ def get_mms_buffers_multi_pipelined(partitions_per_dnn: [],
         if len(partitions) == 1:
             single_partition = partitions[0]
             phases_per_layer = phases_per_layer_per_partition[single_partition.name]
-            dnn_buffers = get_mms_buffers_no_pipeline(single_partition, phases_per_layer)
+            dnn_buffers, dnn_schedule = get_mms_buffers_no_pipeline(single_partition, phases_per_layer)
         # multi-partition dnn (executed as a pipeline)
         else:
-            dnn_buffers = get_mms_buffers_pipelined(partitions, phases_per_layer_per_partition)
+            dnn_buffers, dnn_schedule = get_mms_buffers_pipelined(partitions, phases_per_layer_per_partition)
 
         buffers_per_dnn.append(dnn_buffers)
 
     # reuse buffers among dnns (csdf)
-    shared_buffers = reuse_buffers_among_csdf(buffers_per_dnn, ["dnn" + str(dnn_id) for dnn_id in range(len(partitions_per_dnn))])
+    shared_buffers = reuse_buffers_among_csdf(buffers_per_dnn, dnn_names)
     set_auto_buffer_names(shared_buffers)
 
-    return shared_buffers
+    schedule = None
+    return shared_buffers, schedule
 
 ########################################
 # helper functions

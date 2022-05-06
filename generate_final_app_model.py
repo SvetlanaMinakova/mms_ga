@@ -56,7 +56,7 @@ def build_final_app(app_config_path: str, best_chromosome_path: str, verbose=Tru
 
         stage = "Building buffers using CSDF model analysis"
         print_stage(stage, verbose)
-        csdf_buffers = get_mms_buffers_and_schedule(dnns, partitions_per_dnn, dp_encoding, verbose=False)
+        csdf_buffers, csdf_schedule = get_mms_buffers_and_schedule(dnns, partitions_per_dnn, dp_encoding, verbose=False)
 
         stage = "Creating DNN buffers description"
         print_stage(stage, verbose)
