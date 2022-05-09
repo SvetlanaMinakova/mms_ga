@@ -7,7 +7,7 @@ The code is based on scientific paper **Memory-Throughput Trade-off for CNN-base
 * Buffers reuse: a technique, widely used by existing Deep Learning frameworks, where target platform memory is reused among different layers of a CNN.
 
 ## Requirements
-* python 3.6+
+* python 3.8+
 
 ## Inputs and outputs
 *Examples of the tool inputs are located in ./data folder*.
