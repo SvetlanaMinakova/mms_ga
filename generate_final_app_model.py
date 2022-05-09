@@ -1,24 +1,66 @@
-from converters.json_converters.json_app_config_parser import parse_app_conf, parse_json_dnns,\
-    parse_json_mappings, partition_dnns_with_mapping
-from models.dnn_model.transformation.external_ios_processor import external_ios_to_data_layers
+import argparse
+import sys
 import traceback
-from util import print_stage
-from models.app_model.MMSDNNInferenceModel import MMSDNNInferenceModel
-from DSE.low_memory.mms.buf_building import get_mms_buffers_and_schedule
-from DSE.low_memory.mms.phases_derivation import dp_encoding_to_phases_num
-from fileworkers.json_fw import read_json
-from converters.data_buffers_converter import csdf_reuse_buf_to_generic_dnn_buf
-from DSE.scheduling.dnn_scheduling import DNNScheduling
-from simulation.csdf_simulation import simulate_execution_asap
-from converters.dnn_to_csdf import dnn_to_csfd_one_to_one
+from os.path import dirname
+
+"""
+Console-interface script for the best chromosome selection performed after the GA-based search
+"""
 
 
-def build_final_app(app_config_path: str, best_chromosome_path: str, verbose=True):
-    # parse config
-    stage = "Parsing application configuration"
-    conf = parse_app_conf(app_config_path)
-    # print(conf)
+def main():
+    parser = argparse.ArgumentParser(description='Train an onnx model with iterations')
+    # required arguments
+    parser.add_argument('-c', '--config', type=str, action='store',
+                        help='path to .json application config', required=True)
+
+    parser.add_argument('-b', '--best-chromosome', type=str, action='store',
+                        help='path to best chromosome, generated using ./run_mms_selection.py '
+                             'script and saved in .json format', required=True)
+
+    parser.add_argument('-o', metavar='--output', type=str, action='store',
+                        default="./output/best_chromosome/best_chromosome.json",
+                        help='Path to the output .json file to save the best chromosome in.')
+
+    # general flags
+    parser.add_argument("--silent", help="do not provide print-out for the script steps",
+                        action="store_true", default=False)
+
+    # parse arguments
+    args = parser.parse_args()
+
+    # Determine current directory and add path to this
+    # directory to syspath to use other .python modules
+    this_dir = get_cur_directory()
+    sys.path.append(this_dir)
+
+    # import sub-modules
+    from util import print_stage
+    from DSE.low_memory.mms.final_model_building import build_final_app
+    from converters.json_converters.json_app_config_parser import parse_app_conf, parse_json_dnns, \
+        parse_json_mappings
+    from converters.json_converters.mms_final_app_to_json import mms_app_to_json
+    from fileworkers.json_fw import read_json
+
     try:
+        # parse parameters
+        conf_file = args.config
+        output_file_path = args.o
+        best_chromosome_path = args.b
+        silent = args.silent
+        verbose = not silent
+
+        stage = "Reading best chromosome"
+        print_stage(stage, verbose)
+        json_best_chromosome = read_json(best_chromosome_path)
+        dp_encoding = json_best_chromosome["dp_by_parts"]
+        # print("dp_encoding:", dp_encoding)
+
+        # parse config
+        stage = "Parsing application configuration"
+        print_stage(stage, verbose)
+        conf = parse_app_conf(conf_file)
+
         stage = "DNNs parsing"
         print_stage(stage, verbose)
         dnns = parse_json_dnns(conf["json_dnn_paths"])
@@ -27,73 +69,51 @@ def build_final_app(app_config_path: str, best_chromosome_path: str, verbose=Tru
         print_stage(stage, verbose)
         dnn_mappings = parse_json_mappings(conf["json_mapping_paths"])
 
-        # partition dnns according to the parsed mappings
-        stage = "DNNs partitioning"
-        print_stage(stage, verbose)
-        partitions_per_dnn = partition_dnns_with_mapping(dnns, dnn_mappings)
-
-        stage = "Representing external dnn data sources/consumers as (data) layers"
-        print_stage(stage, verbose)
-        # represent all external I/Os as explicit (data) layers: important for building
-        # of inter-dnn buffers and external-source -> dnn buffers
-        for partitions in partitions_per_dnn:
-            for partition in partitions:
-                external_ios_to_data_layers(partition)
-
-        stage = "Reading best chromosome"
-        print_stage(stage, verbose)
-        json_best_chromosome = read_json(best_chromosome_path)
-        dp_encoding = json_best_chromosome["dp_by_parts"]
-        print("dp_encoding:", dp_encoding)
-
-        stage = "Obtaining phases per dnn layer"
-        print_stage(stage, verbose)
-        phases = dp_encoding_to_phases_num(dp_encoding, dnns)
-        print("phases per layer:", phases)
-
-        stage = "Building DNN buffers and schedules through CNN-to-CSDF conversion and CSDF model analysis"
-        print_stage(stage, verbose)
-        csdf_buffers, csdf_schedule = get_mms_buffers_and_schedule(dnns,
-                                                                   partitions_per_dnn,
-                                                                   dp_encoding,
-                                                                   generate_schedule=True,
-                                                                   verbose=False)
-        stage = "DNN  schedules (layers execution order)"
-        print_stage(stage, verbose)
-        if csdf_schedule is not None:
-            for elem in csdf_schedule:
-                print(elem)
-
-        stage = "Creating DNN buffers description"
-        print_stage(stage, verbose)
-        generic_dnn_buffers = csdf_reuse_buf_to_generic_dnn_buf(csdf_buffers, dnns)
-        # for buf in generic_dnn_buffers:
-        #    buf.print_details()
-
-        stage = "Creating final model"
-        app_model = MMSDNNInferenceModel(conf["app_name"])
-        app_model.dnn_names = [dnn.name for dnn in dnns]
-        app_model.partitions_per_dnn = partitions_per_dnn
-        app_model.phases_per_dnn_per_layer = phases
+        final_app_model = build_final_app(conf["app_name"], dnns, dnn_mappings, dp_encoding, verbose)
         # app_model.print_details()
 
+        stage = "Saving final app model in JSON file (" + output_file_path + ")"
+        print_stage(stage, verbose)
+        mms_app_to_json(final_app_model, output_file_path)
+
     except Exception as e:
-        print("Final app generation error at stage " + stage)
+        print("MMS final app generation error")
         traceback.print_tb(e.__traceback__)
 
 
 def tst():
-    # multi-dnn app (no pipeline)
-    """
-    app_config_path = "./data/test/app_configs/multi_dnn.json"
-    best_chromosome_path = "./data/test/best_chromosome/multi_dnn_app.json"
-    """
-
     # single-dnn app (no pipeline)
     app_config_path = "./data/test/app_configs/single_dnn.json"
     best_chromosome_path = "./data/test/best_chromosome/single_dnn_app.json"
+    output_file_path = "./output/single_dnn_final_app.json"
+
+
+    """
+    # single-dnn app (pipeline)
+    app_config_path = "./data/test/app_configs/single_dnn_pipeline.json"
+    best_chromosome_path = "./data/test/best_chromosome/single_dnn_app_pipeline.json"
 
     build_final_app(app_config_path, best_chromosome_path)
 
-tst()
+    # multi-dnn app (no pipeline)
+    app_config_path = "./data/test/app_configs/multi_dnn.json"
+    best_chromosome_path = "./data/test/best_chromosome/multi_dnn_app.json"
+
+    build_final_app(app_config_path, best_chromosome_path)
+
+    # multi-dnn app (pipeline)
+    app_config_path = "./data/test/app_configs/multi_dnn_pipeline.json"
+    best_chromosome_path = "./data/test/best_chromosome/multi_dnn_app_pipeline.json"
+
+    build_final_app(app_config_path, best_chromosome_path)
+    """
+
+
+def get_cur_directory():
+    this_dir = dirname(__file__)
+    return this_dir
+
+
+if __name__ == "__main__":
+    main()
 

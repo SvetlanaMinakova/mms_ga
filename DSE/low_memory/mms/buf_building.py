@@ -8,6 +8,8 @@ from DSE.low_memory.buf_reuse_from_simulation import build_csdfg_reuse_buffers_f
 from models.data_buffers import build_naive_csdfg_buffers
 from DSE.low_memory.mms.phases_derivation import get_phases_per_layer, get_phases_per_layer_per_partition, \
     get_phases_per_layer_per_dnn, get_phases_per_layer_per_partition_per_dnn
+from DSE.scheduling.mms_dnn_inf_model_schedule import MMSDNNInfModelSchedule, csdf_sim_trace_schedule_to_dnn_schedule,\
+    copy_dnn_schedule
 
 """
 The module builds MMS (max-memory-save) buffers that employ reuse of data within (data-processing-by-parts)
@@ -17,7 +19,11 @@ and among (buffers reuse) different layers of DNN(s), used by a DNN-based applic
 # Interface
 
 
-def get_mms_buffers_and_schedule(dnns: [], partitions_per_dnn: [], dp_encoding: [], generate_schedule=False, verbose=False):
+def get_mms_buffers_and_schedule(dnns: [],
+                                 partitions_per_dnn: [],
+                                 dp_encoding: [],
+                                 generate_schedule=False,
+                                 verbose=False):
     """
     Get MMS buffers for a DNN-based application, using a one or multiple of DNNs,
         where every DNN is possibly executed as a set of pipelined partitions
@@ -55,8 +61,8 @@ def get_mms_buffers_and_schedule(dnns: [], partitions_per_dnn: [], dp_encoding: 
         if not is_pipelined:
             single_dnn = dnns[0]
             phases = get_phases_per_layer(single_dnn, dp_encoding)
-            print("phases per layer (internal): ", phases)
             buffers, schedule = get_mms_buffers_no_pipeline(single_dnn, phases, generate_schedule)
+            # format schedule
             return buffers, schedule
 
         # pipeline parallelism is exploited
@@ -131,8 +137,9 @@ def get_mms_buffers_no_pipeline(dnn, phases_per_layer: {}, generate_schedule=Fal
         value (int) = number of phases, performed by the layer
     :param generate_schedule: (flag) if yes, actual per-partition-per dnn schedule is generated. Otherwise,
         null-schedule is returned
-    :return: list of CSDF buffers, used by the application, and schedule,
-        required for the application to be executed with proposed buffers
+    :return: list of CSDF buffers, used by the application, and schedule (object of MMSDNNInfModelSchedule class),
+        required for the application to be executed with proposed buffers. If generate_schedule flag is False.
+        schedule is None.
     """
     annotate_layers_with_phases(dnn, phases_per_layer)
     annotate_with_sim_time(dnn)
@@ -155,7 +162,12 @@ def get_mms_buffers_no_pipeline(dnn, phases_per_layer: {}, generate_schedule=Fal
     reset_phases(dnn)
 
     # CSDF model schedule (execution order of actors within CSDF model)
-    schedule = sim_trace.get_asap_schedule() if generate_schedule else None
+    schedule = None
+    if generate_schedule:
+        schedule = MMSDNNInfModelSchedule([dnn.name])
+        sim_trace_schedule = sim_trace.get_asap_schedule()
+        dnn_schedule = csdf_sim_trace_schedule_to_dnn_schedule(sim_trace_schedule)
+        schedule.append_dnn_partition_schedule(dnn.name, dnn.name, dnn_schedule)
 
     return reuse_dp_csdf_buffers, schedule
 
@@ -180,12 +192,15 @@ def get_mms_buffers_pipelined(dnn_partitions,
     :param dnn_name: name of the DNN
     :param generate_schedule: (flag) if yes, actual per-partition-per dnn schedule is generated. Otherwise,
         null-schedule is returned
-    :return: list of CSDF buffers, used by the application, and schedule,
-        required for the application to be executed with proposed buffers
+    :return: list of CSDF buffers, used by the application, and schedule (object of MMSDNNInfModelSchedule class),
+        required for the application to be executed with proposed buffers. If generate_schedule flag is False.
+        schedule is None.
     """
     # create buffers within partitions
     csdf_buffers_per_partition = []
     dp_reuse_buffers = []
+
+    schedule = MMSDNNInfModelSchedule([dnn_name])
 
     for partition in dnn_partitions:
         annotate_layers_with_phases(partition, phases_per_layer_per_partition[partition.name])
@@ -206,6 +221,11 @@ def get_mms_buffers_pipelined(dnn_partitions,
         reuse_csdf_buffers = build_csdfg_reuse_buffers_from_sim_trace(sim_trace, csdf_buffers)
         csdf_buffers_per_partition.append(reuse_csdf_buffers)
 
+        if generate_schedule:
+            sim_trace_partition_schedule = sim_trace.get_asap_schedule()
+            partition_schedule = csdf_sim_trace_schedule_to_dnn_schedule(sim_trace_partition_schedule)
+            schedule.append_dnn_partition_schedule(dnn_name, partition.name, partition_schedule)
+
     # NOTE: buffers CANNOT be reused among different partitions executed on different processors!
     # in a CNN executed as a pipeline, buffers can only be reused within every partition
     # Thus, the result buffers are a superset of buffers per-partition
@@ -221,7 +241,9 @@ def get_mms_buffers_pipelined(dnn_partitions,
     for partition in dnn_partitions:
         reset_phases(partition)
 
-    schedule = None
+    if not generate_schedule:
+        schedule = None
+
     return dp_reuse_buffers, schedule
 
 
@@ -238,20 +260,29 @@ def get_mms_buffers_multi(dnns, phases_per_layer_per_dnn: {}, generate_schedule=
         value (int) = number of phases, performed by the layer
     :param generate_schedule: (flag) if yes, actual per-partition-per dnn schedule is generated. Otherwise,
         null-schedule is returned
-    :return: list of CSDF buffers, used by the application, and schedule,
-        required for the application to be executed with proposed buffers
+    :return: list of CSDF buffers, used by the application, and schedule (object of MMSDNNInfModelSchedule class),
+        required for the application to be executed with proposed buffers. If generate_schedule flag is False.
+        schedule is None.
     """
     buffers_per_dnn = []
 
+    schedule = MMSDNNInfModelSchedule([dnn.name for dnn in dnns])
+
     for dnn in dnns:
-        csdf_buffers, csdf_schedule = get_mms_buffers_no_pipeline(dnn, phases_per_layer_per_dnn[dnn.name])
+        csdf_buffers, dnn_schedule = get_mms_buffers_no_pipeline(dnn,
+                                                                 phases_per_layer_per_dnn[dnn.name],
+                                                                 generate_schedule)
         buffers_per_dnn.append(csdf_buffers)
+        if generate_schedule:
+            copy_dnn_schedule(dnn.name, dnn_schedule, schedule)
 
     # reuse buffers among dnn (csdf)
     shared_buffers = reuse_buffers_among_csdf(buffers_per_dnn, [dnn.name for dnn in dnns])
     set_auto_buffer_names(shared_buffers)
 
-    schedule = None
+    if not generate_schedule:
+        schedule = None
+
     return shared_buffers, schedule
 
 
@@ -279,8 +310,11 @@ def get_mms_buffers_multi_pipelined(partitions_per_dnn: [],
     """
     buffers_per_dnn = []
 
+    schedule = MMSDNNInfModelSchedule(dnn_names)
+
     for dnn_id in range(len(partitions_per_dnn)):
         partitions = partitions_per_dnn[dnn_id]
+        dnn_name = dnn_names[dnn_id]
         phases_per_layer_per_partition = phases_per_layer_per_partition_per_dnn[dnn_id]
 
         # single-partition dnn (executed sequentially)
@@ -290,20 +324,25 @@ def get_mms_buffers_multi_pipelined(partitions_per_dnn: [],
             dnn_buffers, dnn_schedule = get_mms_buffers_no_pipeline(single_partition,
                                                                     phases_per_layer,
                                                                     generate_schedule)
+
         # multi-partition dnn (executed as a pipeline)
         else:
             dnn_buffers, dnn_schedule = get_mms_buffers_pipelined(partitions,
                                                                   phases_per_layer_per_partition,
                                                                   dnn_names[dnn_id],
                                                                   generate_schedule)
-
         buffers_per_dnn.append(dnn_buffers)
+
+        if generate_schedule:
+            copy_dnn_schedule(dnn_name, dnn_schedule, schedule)
 
     # reuse buffers among dnns (csdf)
     shared_buffers = reuse_buffers_among_csdf(buffers_per_dnn, dnn_names)
     set_auto_buffer_names(shared_buffers)
 
-    schedule = None
+    if not generate_schedule:
+        schedule = None
+
     return shared_buffers, schedule
 
 ########################################

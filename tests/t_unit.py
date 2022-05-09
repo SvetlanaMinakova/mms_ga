@@ -96,7 +96,7 @@ def run_test_ga_single_dnn_pipeline(config: {}, info_level):
         as well as script-specific verbose output is printed to the console
     :return: True if tests ran successfully and False otherwise
     """
-    app_config_path = str(os.path.join(config["app_configs_dir"], "single_dnn_pipeline.json"))
+    app_config_path = str(os.path.join(config["app_configs_dir"], "single_dnn_app_pipeline.json"))
     test_passed = run_test_case_ga(app_config_path, config, info_level,
                                    "Single-CNN application with pipeline parallelism")
     return test_passed

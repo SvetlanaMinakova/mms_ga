@@ -98,6 +98,7 @@ def get_phases_per_layer_per_partition(dnn_partitions: [],
             phases_per_layer[layer.name] = layer_phases
             layer_id_in_encoding += 1
         phases_per_layer_partition[partition.name] = phases_per_layer
+    return phases_per_layer_partition
 
 
 def get_max_phases_per_layer_per_dnn(dnns: [DNN]) -> {}:

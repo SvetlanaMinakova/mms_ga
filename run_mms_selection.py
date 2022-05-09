@@ -1,5 +1,4 @@
 import argparse
-import os.path
 from os.path import dirname
 import sys
 import traceback
@@ -51,7 +50,7 @@ def main():
     from util import print_stage
     from fileworkers.json_fw import read_json
     from fileworkers.json_fw import save_as_json
-    from mms_selection import filter_chromosomes, select_chromosome_with_min_time_loss, \
+    from DSE.low_memory.mms.ga_based.mms_selection import filter_chromosomes, select_chromosome_with_min_time_loss, \
         select_chromosome_with_min_buf_size
 
     try:

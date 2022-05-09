@@ -25,6 +25,13 @@ class JSONNestedClassVisitor:
             print("Json visitor exception: ", str(e))
         self._file.close()
 
+    def run_in_file(self, file):
+        self._file = file
+        try:
+            self.visit_object(self._root)
+        except Exception as e:
+            print("Json visitor exception: ", str(e))
+
     def visit_object(self, obj):
         """
         Recursive object visitor
