@@ -4,7 +4,7 @@ import traceback
 from os.path import dirname
 
 """
-Console-interface script for the best chromosome selection performed after the GA-based search
+Console-interface script for final application model generation
 """
 
 
@@ -46,11 +46,11 @@ def main():
         # parse parameters
         conf_file = args.config
         output_file_path = args.o
-        best_chromosome_path = args.b
+        best_chromosome_path = args.best_chromosome
         silent = args.silent
         verbose = not silent
 
-        stage = "Reading best chromosome"
+        stage = "Reading best chromosome" # from " + str(best_chromosome_path)
         print_stage(stage, verbose)
         json_best_chromosome = read_json(best_chromosome_path)
         dp_encoding = json_best_chromosome["dp_by_parts"]
@@ -81,34 +81,6 @@ def main():
         traceback.print_tb(e.__traceback__)
 
 
-def tst():
-    # single-dnn app (no pipeline)
-    app_config_path = "./data/test/app_configs/single_dnn.json"
-    best_chromosome_path = "./data/test/best_chromosome/single_dnn_app.json"
-    output_file_path = "./output/single_dnn_final_app.json"
-
-
-    """
-    # single-dnn app (pipeline)
-    app_config_path = "./data/test/app_configs/single_dnn_pipeline.json"
-    best_chromosome_path = "./data/test/best_chromosome/single_dnn_app_pipeline.json"
-
-    build_final_app(app_config_path, best_chromosome_path)
-
-    # multi-dnn app (no pipeline)
-    app_config_path = "./data/test/app_configs/multi_dnn.json"
-    best_chromosome_path = "./data/test/best_chromosome/multi_dnn_app.json"
-
-    build_final_app(app_config_path, best_chromosome_path)
-
-    # multi-dnn app (pipeline)
-    app_config_path = "./data/test/app_configs/multi_dnn_pipeline.json"
-    best_chromosome_path = "./data/test/best_chromosome/multi_dnn_app_pipeline.json"
-
-    build_final_app(app_config_path, best_chromosome_path)
-    """
-
-
 def get_cur_directory():
     this_dir = dirname(__file__)
     return this_dir
@@ -116,4 +88,3 @@ def get_cur_directory():
 
 if __name__ == "__main__":
     main()
-

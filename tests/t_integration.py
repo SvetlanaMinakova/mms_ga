@@ -26,18 +26,6 @@ def main():
     try:
         args = parser.parse_args()
         info_level = args.info_level
-
-        # import project modules
-        from util import get_project_root
-        from fileworkers.common_fw import clear_folder, create_or_overwrite_dir
-        from tests.test_config import get_test_config
-        from tests.t_unit import run_test_step
-
-        config = get_test_config()
-        # cleanup intermediate files directory
-        # print("cleanup folder", intermediate_files_folder_abs)
-        clear_folder(config["intermediate_files_folder_abs"])
-        create_or_overwrite_dir(config["intermediate_files_folder_abs"])
         integration_test_result = run_integration_test(info_level)
         return integration_test_result
 
@@ -58,12 +46,31 @@ def run_integration_test(info_level):
         as well as script-specific verbose output is printed to the console
     :return: True if tests ran successfully and False otherwise
     """
+    # import project modules
+    from fileworkers.common_fw import clear_folder, create_or_overwrite_dir
+    from tests.test_config import get_test_config
     from tests.t_unit import run_test_step
 
     if info_level > 0:
         print("RUN INTEGRATION TEST")
+
+    # get test config
+    config = get_test_config()
+
+    # cleanup test output files
+    test_output_files_folder = config["intermediate_files_folder_abs"]
+    if info_level > 0:
+        print("Clean target files folder", test_output_files_folder)
+    clear_folder(test_output_files_folder)
+    create_or_overwrite_dir(test_output_files_folder)
+
     # steps (scripts) in execution order
-    steps = ["ga_single_dnn", "ga_single_dnn_pipeline", "ga_multi_dnn", "ga_multi_dnn_pipeline"]
+    steps = ["ga_single_dnn", "ga_single_dnn_pipeline",
+             "ga_multi_dnn", "ga_multi_dnn_pipeline",
+             "selection_single_dnn", "selection_single_dnn_pipeline",
+             "selection_multi_dnn", "selection_multi_dnn_pipeline",
+             "final_app_single_dnn", "final_app_single_dnn_pipeline",
+             "final_app_multi_dnn", "final_app_multi_dnn_pipeline"]
     for step in steps:
         step_executed = run_test_step(step, info_level)
         if step_executed is False:

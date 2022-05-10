@@ -1,6 +1,7 @@
 {
-  "app_name": "multi_dnn_pipeline_app",
-  "json_dnn_paths": ["./data/json_dnn/CNN1.json", "./data/json_dnn/CNN2.json"],
-  "json_ga_conf_path" : "./data/test/test_mms_ga_conf.json",
-  "json_mapping_paths": ["", "./data/test/pipeline_parallelism/single_dnn_pipeline.json"]
+  "app_name": "multi_dnn_pipeline",
+  "json_dnn_paths": ["MMSROOT/data/json_dnn/CNN1.json", "./data/json_dnn/CNN2.json"],
+  "json_ga_conf_path" : "MMSROOT/data/test/test_mms_ga_conf.json",
+  "json_mapping_paths": ["", "MMSROOT/data/test/pipeline_parallelism/single_dnn_pipeline.json"],
+  "output_file_path": "MMSROOT/output/test/multi_dnn_pipeline_chromosome.json"
 }

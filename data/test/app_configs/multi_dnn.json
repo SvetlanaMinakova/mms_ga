@@ -1,5 +1,6 @@
 {
-  "app_name": "multi_dnn_app",
-  "json_dnn_paths": ["./data/json_dnn/CNN1.json", "./data/json_dnn/CNN2.json"],
-  "json_ga_conf_path" : "./data/test/test_mms_ga_conf.json"
+  "app_name": "multi_dnn",
+  "json_dnn_paths": ["MMSROOT/data/json_dnn/CNN1.json", "./data/json_dnn/CNN2.json"],
+  "json_ga_conf_path" : "MMSROOT/data/test/test_mms_ga_conf.json",
+  "output_file_path": "MMSROOT/output/test/multi_dnn_chromosome.json"
 }

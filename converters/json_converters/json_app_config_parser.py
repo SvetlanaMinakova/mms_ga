@@ -33,8 +33,7 @@ def parse_app_conf(path):
             # set optional fields
             conf_as_dict["app_name"] = extract_or_default(conf, "app_name", "app")
             conf_as_dict["json_mapping_paths"] = get_json_mapping_paths(conf)
-            default_output_path = str(os.path.join(get_project_root(), "output", (conf["app_name"] + ".json")))
-            conf_as_dict["output_file_path"] = extract_or_default(conf, "output_file_path", default_output_path)
+            conf_as_dict["output_file_path"] = get_output_file_path(conf)
 
             return conf_as_dict
 
@@ -56,6 +55,14 @@ def get_json_mapping_paths(json_app_config):
     return json_mapping_paths_abs_formatted
 
 
+def get_output_file_path(json_app_config):
+    default_output_file_path = str(os.path.join(get_project_root(), "output",
+                                                (json_app_config["app_name"] + "_chromosomes.json")))
+    output_file_path = extract_or_default(json_app_config, "output_file_path", default_output_file_path)
+    output_file_path = path_from_project_root_to_abs_path(output_file_path)
+    return output_file_path
+
+
 def path_from_project_root_to_abs_path(file_path: str) -> str:
     """
     Convert relative or absolute path to input data file
@@ -68,7 +75,7 @@ def path_from_project_root_to_abs_path(file_path: str) -> str:
     from util import get_project_root
     project_root = get_project_root()
 
-    relative_path_prefixes = ["./"]
+    relative_path_prefixes = ["./", "MMSROOT/"]
 
     for prefix in relative_path_prefixes:
         if file_path.startswith(prefix):
