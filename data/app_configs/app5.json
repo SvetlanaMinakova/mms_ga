@@ -1,9 +1,9 @@
 {
   "app_name": "app5",
   "json_dnn_paths": [
-      "./data/json_dnn/inceptionv2.json",
-      "./data/json_dnn/mobilenetv1_25.json",
-      "./data/json_dnn/resnet50.json"
+      "MMSROOT/data/json_dnn/inceptionv2.json",
+      "MMSROOT/data/json_dnn/mobilenetv1_25.json",
+      "MMSROOT/data/json_dnn/resnet50.json"
   ],
   "json_ga_conf_path" : "./data/mms_ga_configs/app5_ga_conf.json"
 }

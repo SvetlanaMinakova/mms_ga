@@ -1,9 +1,9 @@
 {
   "app_name": "app6",
   "json_dnn_paths": [
-      "./data/json_dnn/densenet121.json",
-      "./data/json_dnn/mobilenetv1.json",
-      "./data/json_dnn/resnet50.json"
+      "MMSROOT/data/json_dnn/densenet121.json",
+      "MMSROOT/data/json_dnn/mobilenetv1.json",
+      "MMSROOT/data/json_dnn/resnet50.json"
   ],
   "json_ga_conf_path" : "./data/mms_ga_configs/app6_ga_conf.json"
 }

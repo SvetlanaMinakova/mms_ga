@@ -1,8 +1,8 @@
 {
   "app_name": "app4",
-  "json_dnn_paths": ["./data/json_dnn/efficientnetb0.json"],
-  "json_mapping_paths" : ["./data/pipeline_mapping/efficientnetb0.json"],
-  "json_ga_conf_path" : "./data/mms_ga_configs/app4_ga_conf.json"
+  "json_dnn_paths": ["MMSROOT/data/json_dnn/efficientnetb0.json"],
+  "json_mapping_paths" : ["MMSROOT/data/pipeline_mapping/efficientnetb0.json"],
+  "json_ga_conf_path" : "MMSROOT/data/mms_ga_configs/app4_ga_conf.json"
 }
             
            
